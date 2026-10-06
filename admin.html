@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>业务员工作台 - 工单看板系统</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f5f7; color: #2c2c2a; font-size: 14px;
+  }
+  header {
+    background: #fff; border-bottom: 1px solid rgba(0,0,0,.08);
+    padding: 14px 32px; display: flex; align-items: center; gap: 20px;
+    position: sticky; top: 0; z-index: 10; flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; font-weight: 500; }
+  .back-home {
+    text-decoration: none; color: #5f5e5a; font-size: 13.5px; flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,.12); background: #fff; border-radius: 20px;
+    padding: 6px 14px; line-height: 1.4;
+  }
+  .back-home:hover { border-color: #185fa5; color: #185fa5; }
+  .chips { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+  .chip {
+    border: 1px solid rgba(0,0,0,.12); background: #fff; border-radius: 20px;
+    padding: 6px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+    color: #5f5e5a;
+  }
+  .chip:hover { border-color: rgba(0,0,0,.3); }
+  .chip.on { background: #185fa5; border-color: #185fa5; color: #fff; }
+  .chip b { font-weight: 500; margin-left: 4px; }
+  .chip.flag.on { background: #ef9f27; border-color: #ef9f27; }
+  .btn {
+    border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn-primary { background: #185fa5; color: #fff; }
+  .btn-primary:hover { background: #0c447c; }
+  .btn-ghost { background: #f1efe8; color: #444441; }
+  .btn-ghost:hover { background: #e6e4dc; }
+  .btn-danger { background: #fcebeb; color: #a32d2d; }
+  .toolbar {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    padding: 16px 32px 0;
+  }
+  .toolbar input[type="search"] {
+    flex: 1; min-width: 200px; border: 1px solid rgba(0,0,0,.15); border-radius: 8px;
+    padding: 9px 14px; font-size: 14px; font-family: inherit;
+  }
+  .toolbar select {
+    border: 1px solid rgba(0,0,0,.15); border-radius: 8px; padding: 9px 12px;
+    font-size: 14px; font-family: inherit; background: #fff;
+  }
+  .toolbar .spacer { flex: 1; }
+  .result-hint { font-size: 13px; color: #888780; }
+  main { padding: 18px 32px 60px; }
+  .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .order {
+    background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 12px;
+    padding: 16px; cursor: pointer; transition: box-shadow .15s;
+    display: flex; gap: 14px; position: relative;
+  }
+  .order:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+  .order.urgent-card { border-left: 3px solid #e24b4a; }
+  .order.rush-card { border-left: 4px solid #d92626; background: #fff8f8; }
+  .badge-rush {
+    font-size: 11px; padding: 2px 9px; border-radius: 20px;
+    background: #d92626; color: #fff; flex-shrink: 0; font-weight: 500;
+  }
+  .ck-row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #2c2c2a; }
+  .ck-row input { width: 18px; height: 18px; accent-color: #d92626; cursor: pointer; flex: none; }
+  .ck-row label { display: inline; margin: 0; font-size: 14px; color: #2c2c2a; cursor: pointer; }
+  .ck-hint { display: block; font-size: 12px; color: #888780; line-height: 1.6; margin-top: 6px; }
+  .thumb {
+    width: 72px; height: 72px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+    background: #f1efe8; border: 1px solid rgba(0,0,0,.06);
+  }
+  .thumb.empty { display: flex; align-items: center; justify-content: center; color: #b4b2a9; font-size: 11px; }
+  .o-body { flex: 1; min-width: 0; }
+  .o-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .o-id { font-size: 12px; color: #888780; font-family: monospace; }
+  .pill {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px; color: #fff; flex-shrink: 0;
+  }
+  .o-product { font-size: 15px; font-weight: 500; margin-bottom: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .o-meta { font-size: 12px; color: #888780; display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .o-meta .urgent { color: #a32d2d; font-weight: 500; }
+  .o-time { font-size: 11px; color: #b4b2a9; }
+  .empty-state {
+    text-align: center; color: #888780; padding: 70px 0; font-size: 14px; line-height: 2;
+  }
+
+  /* ===== 弹窗 ===== */
+  .mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20;
+    display: none; align-items: flex-start; justify-content: center;
+    padding: 40px 16px; overflow-y: auto;
+  }
+  .mask.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px; width: 560px; max-width: 100%;
+    padding: 24px;
+  }
+  .modal h2 { font-size: 16px; font-weight: 500; margin-bottom: 18px; }
+  .form-row { margin-bottom: 14px; }
+  .form-row label { display: block; font-size: 12px; color: #888780; margin-bottom: 6px; }
+  .form-row input, .form-row textarea, .form-row select {
+    width: 100%; border: 1px solid rgba(0,0,0,.15); border-radius: 8px;
+    padding: 9px 12px; font-size: 14px; font-family: inherit; background: #fff;
+  }
+  /* 复选框行不吃上面的 width:100% 规则 */
+  .form-row .ck-row input { width: 18px; height: 18px; padding: 0; }
+  .form-row textarea { resize: vertical; min-height: 72px; }
+  /* 制作要求快捷标签（点一下填进输入框） */
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .chip {
+    padding: 5px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
+    border: 1px solid rgba(0,0,0,.18); background: #fff; color: #55544e;
+    font-family: inherit; user-select: none;
+  }
+  .chip:hover { border-color: #2c6fb8; color: #2c6fb8; }
+  .chip.on { background: #2c6fb8; border-color: #2c6fb8; color: #fff; }
+  .chip-del { margin-left: 7px; color: #b5b3aa; font-size: 15px; }
+  .chip-del:hover { color: #d92626; }
+  .chip-up { margin-left: 7px; color: #b5b3aa; font-size: 13px; cursor: pointer; }
+  .chip-up:hover { color: #2c6fb8; }
+  .chip-manage { float: right; font-size: 12px; color: #2c6fb8; cursor: pointer; font-weight: 400; }
+  .chip-manage:hover { text-decoration: underline; }
+  /* 「更多 / 收起」：虚线边框区分于普通词；隐藏区里有已用到的词时给个浅蓝底提示 */
+  .chip-more { border-style: dashed; border-color: #2c6fb8; color: #2c6fb8; }
+  .chip-more.has-on { background: #eaf2fb; }
+  .chip-more:hover { background: #eaf2fb; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .status-seg { display: flex; gap: 8px; }
+  .status-seg button {
+    flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid rgba(0,0,0,.15);
+    background: #fff; cursor: pointer; font-size: 13px; font-family: inherit;
+  }
+  .status-seg button.on { color: #fff; }
+  .imgs { display: flex; gap: 10px; flex-wrap: wrap; }
+  .img-item { position: relative; width: 90px; height: 90px; }
+  .img-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); }
+  .img-item .del {
+    position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+    border-radius: 50%; background: #a32d2d; color: #fff; border: none;
+    cursor: pointer; font-size: 12px; line-height: 20px; text-align: center; padding: 0;
+  }
+  .upload-box {
+    width: 90px; height: 90px; border: 1.5px dashed rgba(0,0,0,.25); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #888780; font-size: 11px; cursor: pointer; background: #fafaf8;
+  }
+  .upload-box:hover { border-color: #185fa5; color: #185fa5; }
+  /* 附件（原文件，可下载） */
+  .file-list { display: flex; flex-direction: column; gap: 8px; }
+  .file-item {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid rgba(0,0,0,.1); border-radius: 8px;
+    padding: 9px 12px; background: #fafaf8; font-size: 13px;
+  }
+  .file-item .f-ic { font-size: 18px; flex-shrink: 0; }
+  .file-item .f-name {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: #2c2c2a;
+  }
+  .file-item .f-size { color: #888780; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .file-item .f-del {
+    border: none; background: none; color: #a32d2d; cursor: pointer;
+    font-size: 12.5px; font-family: inherit; flex-shrink: 0; padding: 2px 4px;
+  }
+  .file-item .f-dl {
+    border: none; background: #eaf3fb; color: #185fa5; cursor: pointer;
+    border-radius: 6px; padding: 5px 12px; font-size: 12.5px; font-family: inherit; flex-shrink: 0;
+  }
+  .file-add {
+    display: inline-block; border: 1.5px dashed rgba(0,0,0,.25); border-radius: 8px;
+    padding: 8px 16px; font-size: 12.5px; color: #888780; cursor: pointer; background: #fafaf8;
+  }
+  .file-add:hover { border-color: #185fa5; color: #185fa5; }
+  .badge-file {
+    font-size: 11.5px; background: #eaf3fb; color: #185fa5;
+    border-radius: 10px; padding: 2px 9px;
+  }
+  /* 制作端疑问 */
+  .q-box { border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.7; }
+  .q-box.pending { background: #faeeda; color: #633806; }
+  .q-box.replied { background: #eaf3de; color: #27500a; }
+  .q-box.resolved { background: #f1efe8; color: #888780; }
+  .q-list > .q-box { margin-bottom: 10px; }
+  .q-reply-row { display: flex; gap: 8px; margin-top: 10px; }
+  .q-reply-row input {
+    flex: 1; border: 1px solid rgba(0,0,0,.15); border-radius: 8px;
+    padding: 8px 10px; font-size: 13px; font-family: inherit;
+  }
+  .q-reply-row button {
+    border: none; background: #639922; color: #fff; border-radius: 8px;
+    padding: 8px 16px; cursor: pointer; font-size: 13px; font-family: inherit;
+  }
+  .q-reply-row button:hover { background: #3b6d11; }
+  .badge-q {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px;
+    background: #ef9f27; color: #fff; flex-shrink: 0;
+  }
+  .badge-photo {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px;
+    background: #639922; color: #fff; flex-shrink: 0;
+  }
+  .q-time { font-size: 11px; opacity: .75; margin-bottom: 2px; }
+  /* 疑问附件：工人拍的图 + 语音留言 */
+  .q-att { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .q-att img {
+    width: 76px; height: 76px; object-fit: cover; border-radius: 7px;
+    border: 1px solid rgba(0,0,0,.12); cursor: zoom-in; background: #fff;
+  }
+  .q-att audio { height: 36px; max-width: 250px; }
+  .q-audio-tag {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    background: rgba(0,0,0,.06); border-radius: 14px; padding: 4px 12px;
+  }
+  #lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 80;
+    display: none; align-items: center; justify-content: center; cursor: zoom-out;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 92%; max-height: 92%; border-radius: 8px; }
+  .modal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; gap: 10px; }
+  .modal-foot .right { display: flex; gap: 10px; }
+  #toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    background: #2c2c2a; color: #fff; padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 99;
+  }
+  #toast.show { opacity: 1; }
+  /* ===== 登录 ===== */
+  body.locked header, body.locked .toolbar, body.locked main { display: none; }
+  #loginWrap {
+    display: none; min-height: 100vh; align-items: center; justify-content: center;
+    background: #f4f5f7; padding: 20px;
+  }
+  .login-card {
+    background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 14px;
+    padding: 34px 30px; width: 380px; max-width: 100%;
+  }
+  .login-card h1 { font-size: 19px; font-weight: 500; margin-bottom: 6px; }
+  .login-card p.sub { font-size: 13px; color: #888780; margin-bottom: 22px; line-height: 1.6; }
+  .login-card input, .login-card select {
+    width: 100%; border: 1px solid rgba(0,0,0,.15); border-radius: 8px;
+    padding: 11px 14px; font-size: 15px; font-family: inherit; margin-bottom: 12px;
+    background: #fff; color: #2c2c2a;
+  }
+  .login-card select { appearance: auto; }
+  .login-card button {
+    width: 100%; border: none; border-radius: 8px; background: #185fa5; color: #fff;
+    padding: 12px 0; font-size: 15px; font-family: inherit; cursor: pointer; margin-top: 6px;
+  }
+  .login-card button:hover { background: #0c447c; }
+  .login-err { color: #a32d2d; font-size: 13px; min-height: 18px; margin-top: 10px; }
+  .login-hint {
+    font-size: 12px; color: #888780; margin-top: 18px; padding-top: 16px;
+    border-top: 1px solid rgba(0,0,0,.08); line-height: 1.9;
+  }
+  .user-chip {
+    display: flex; align-items: center; gap: 10px; font-size: 13px; color: #5f5e5a;
+    background: #f1efe8; border-radius: 20px; padding: 5px 6px 5px 14px;
+  }
+  .user-chip b { font-weight: 500; color: #185fa5; }
+  .user-chip button {
+    border: none; background: #fff; color: #5f5e5a; border-radius: 14px;
+    padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .user-chip button:hover { color: #a32d2d; }
+  /* 登录页底部的文字按钮（切换登录/注册）——优先级要盖过 .login-card button */
+  .login-card button.link-btn {
+    width: 100%; border: none; background: none; color: #185fa5; font-size: 13px;
+    font-family: inherit; cursor: pointer; margin-top: 12px; padding: 6px 0;
+  }
+  .login-card button.link-btn:hover { text-decoration: underline; background: none; }
+  .login-card button.link-btn.muted { color: #888780; }
+  .form-row input[readonly] { background: #f4f5f7; color: #5f5e5a; }
+
+  /* ===== 手机端适配 ===== */
+  @media (max-width: 700px) {
+    header { padding: 10px 14px; gap: 8px; }
+    header h1 { font-size: 15px; }
+    .toolbar { padding: 12px 14px 0; }
+    main { padding: 14px 14px 60px; }
+    .list { grid-template-columns: 1fr; gap: 12px; }
+    .modal { padding: 18px 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .mask { padding: 16px 10px; }
+    .login-card { padding: 26px 20px; }
+  }
+
+  /* ===== 通知设置弹窗 ===== */
+  .nt-sub { font-size: 13px; color: #888780; line-height: 1.75; margin-bottom: 6px; }
+  .nt-block { border-top: 1px solid rgba(0,0,0,.08); padding: 14px 0; }
+  .nt-block.first { border-top: none; padding-top: 4px; }
+  .nt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .nt-name { font-size: 13.5px; font-weight: 500; color: #2c2c2a; }
+  .nt-block input {
+    width: 100%; padding: 9px 12px; border: 1px solid rgba(0,0,0,.12); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: #fff; color: #2c2c2a;
+  }
+  .nt-block input:disabled { background: #f4f5f7; color: #888780; }
+  .nt-desc { font-size: 12px; color: #888780; line-height: 1.7; margin-top: 6px; }
+  .nt-result { font-size: 13px; line-height: 1.9; margin-top: 14px; color: #0f6e56; }
+  .nt-result.err { color: #a32d2d; }
+  .nt-readonly {
+    font-size: 12px; color: #854f0b; background: #faeeda; border-radius: 8px;
+    padding: 9px 12px; line-height: 1.7; margin-top: 12px;
+  }
+  @media (max-width: 700px) {
+    #noticeMask .modal { width: 94vw !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a class="back-home" href="index.html" title="返回首页">‹ 首页</a>
+  <h1>工单工作台</h1>
+  <div class="chips">
+    <button class="chip on" data-status="all">全部<b id="stAll">0</b></button>
+    <button class="chip" data-status="todo">待处理<b id="stTodo">0</b></button>
+    <button class="chip" data-status="doing">进行中<b id="stDoing">0</b></button>
+    <button class="chip" data-status="done">已完成<b id="stDone">0</b></button>
+    <button class="chip flag" id="chipQ">有疑问<b id="stQ">0</b></button>
+  </div>
+  <button class="btn btn-primary" id="btnNew">＋ 新建订单</button>
+  <div class="user-chip" id="userChip" style="display:none;">
+    <span id="curUser"></span>
+    <button id="btnNotice">通知</button>
+    <button id="btnPwd">改密码</button>
+    <button id="btnLogout">退出</button>
+  </div>
+</header>
+
+<!-- 登录 / 注册 -->
+<div id="loginWrap">
+  <div class="login-card">
+    <div id="paneLogin">
+      <h1>工单工作台</h1>
+      <p class="sub">登录后只显示你自己名下的订单</p>
+      <select id="loginName"></select>
+      <input id="loginPwd" type="password" placeholder="密码" autocomplete="off">
+      <button id="btnLogin">登录</button>
+      <div class="login-err" id="loginErr"></div>
+      <div class="login-hint">
+        业务员第一次使用，点下方按钮用<b>邀请码注册</b><br>
+        忘记密码请联系主管
+      </div>
+      <button class="link-btn" id="btnToReg">我是新业务员，用邀请码注册 →</button>
+    </div>
+
+    <div id="paneReg" style="display:none;">
+      <h1>注册业务员账号</h1>
+      <p class="sub">需要主管提供的邀请码，注册成功后自动登录</p>
+      <input id="regName" placeholder="你的姓名（会显示在大屏上）" autocomplete="off">
+      <input id="regPwd" type="password" placeholder="设置密码（至少 6 位）" autocomplete="off">
+      <input id="regPwd2" type="password" placeholder="再输一次密码" autocomplete="off">
+      <input id="regInvite" placeholder="邀请码" autocomplete="off">
+      <button id="btnReg">注册并登录</button>
+      <div class="login-err" id="regErr"></div>
+      <button class="link-btn muted" id="btnBackLogin">← 返回登录</button>
+    </div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <input type="search" id="fKeyword" autocomplete="off" placeholder="搜索订单号 / 客户 / 产品 / 要求内容…">
+  <select id="fOwner"><option value="all">全部业务员</option></select>
+  <select id="fSort">
+    <option value="due">按交期排（紧急优先）</option>
+    <option value="recent">按最近更新</option>
+    <option value="created">按创建时间</option>
+  </select>
+  <span class="result-hint" id="hint"></span>
+  <span class="spacer"></span>
+  <button class="btn btn-ghost" id="btnExport">导出 Excel (CSV)</button>
+  <button class="btn btn-ghost" id="btnClearAll" style="display:none;">清空全部工单</button>
+</div>
+
+<main>
+  <div class="list" id="list"></div>
+</main>
+
+<!-- 新建 / 编辑弹窗 -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <h2 id="mTitle">新建订单</h2>
+    <div class="form-row">
+      <label>客户名称 / 来源平台</label>
+      <input id="fCustomer" autocomplete="off" placeholder="例：星辰广告（淘宝）">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>产品名称</label>
+        <input id="fProduct" autocomplete="off" placeholder="例：亚克力灯箱">
+      </div>
+      <div class="form-row">
+        <label>数量</label>
+        <input id="fQty" type="number" min="1" autocomplete="off" placeholder="20">
+      </div>
+      <div class="form-row">
+        <label>交货日期</label>
+        <input id="fDue" type="date" autocomplete="off">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>业务员（这单归谁，大屏上会显示）</label>
+      <select id="fOwnerInput"></select>
+    </div>
+    <div class="form-row">
+      <label>制作要求 <span style="font-weight:400;color:#888780;">点常用词做成标签，大屏上和手写文字分开显示</span> <span class="chip-manage" id="chipManage">✎ 编辑常用词</span></label>
+      <div class="chip-row" id="chipRow"></div>
+      <textarea id="fNote" autocomplete="off" placeholder="手写注意事项，如尺寸、颜色、发货要求……（常用词点上面的标签就行，不用打进这里）"></textarea>
+    </div>
+    <div class="form-row" id="qAreaRow" style="display:none;">
+      <label>制作端疑问</label>
+      <div id="qArea"></div>
+    </div>
+    <div class="form-row">
+      <label>状态</label>
+      <div class="status-seg" id="fStatus">
+        <button data-v="todo">待处理</button>
+        <button data-v="doing">进行中</button>
+        <button data-v="done">已完成</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>加急</label>
+      <div class="ck-row">
+        <input type="checkbox" id="fRush">
+        <label for="fRush">加急订单（优先安排）</label>
+      </div>
+      <div class="ck-hint">勾选后大屏、手机端都会置顶标红，与交期无关</div>
+    </div>
+    <div class="form-row">
+      <label>材料图片（自动压缩，最多存几张示意即可）</label>
+      <div class="imgs" id="imgs"></div>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    </div>
+    <div class="form-row">
+      <label>附件（图纸 / PDF / 文档等原文件，工人手机端可下载 · 单个不超过 5MB · 最多 5 个）</label>
+      <div class="file-list" id="fileList"></div>
+      <input type="file" id="fileDocInput" multiple hidden>
+    </div>
+    <div class="form-row" id="doneRow" style="display:none;">
+      <label>完工反馈（制作端在手机上传的成品照片 / 完工语音）</label>
+      <div class="imgs" id="doneImgs"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="btnDelete">删除订单</button>
+      <div class="right">
+        <button class="btn btn-ghost" id="btnCancel">取消</button>
+        <button class="btn btn-primary" id="btnSave">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 修改密码 -->
+<div class="mask" id="pwdMask">
+  <div class="modal" style="width:400px;">
+    <h2>修改密码</h2>
+    <div class="form-row">
+      <label>原密码</label>
+      <input id="pwdOld" type="password" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <label>新密码（至少 6 位）</label>
+      <input id="pwdNew" type="password" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <label>再输一次新密码</label>
+      <input id="pwdNew2" type="password" autocomplete="off">
+    </div>
+    <div class="login-err" id="pwdErr" style="min-height:18px;"></div>
+    <div class="modal-foot">
+      <span></span>
+      <div class="right">
+        <button class="btn btn-ghost" id="pwdCancel">取消</button>
+        <button class="btn btn-primary" id="pwdSave">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+<div id="toast"></div>
+
+<!-- 通知设置 -->
+<div class="mask" id="noticeMask">
+  <div class="modal" style="width:540px;">
+    <h2>通知设置</h2>
+    <p class="nt-sub">工人在手机上提疑问或点完工时，第一时间通知业务员。下面几条通道填一条就能用，也可以都开。</p>
+
+    <div class="nt-block first">
+      <div class="nt-head">
+        <span class="nt-name">电脑桌面提醒</span>
+        <button class="btn btn-ghost" id="ntDesktopBtn">开启</button>
+      </div>
+      <div class="nt-desc" id="ntDesktopDesc">业务员电脑开着工作台时，弹系统通知 + 响铃 + 标题角标。不需要任何配置，本机生效。</div>
+    </div>
+
+    <div class="nt-block">
+      <div class="nt-head">
+        <span class="nt-name">个人微信推送（PushPlus）</span>
+      </div>
+      <input id="ntPushplus" autocomplete="off" placeholder="粘贴 PushPlus 的 token">
+      <div class="nt-desc">手机微信打开 pushplus.plus → 登录 → 一对一推送，复制 token 粘这里。之后消息会以微信服务号的形式推到你微信。<br>
+        <b>注意：PushPlus 要求先完成实名认证</b>，未实名的账号发消息会直接失败（返回 905），一条都发不出去。</div>
+    </div>
+
+    <div class="nt-block">
+      <div class="nt-head">
+        <span class="nt-name">个人微信推送（Server酱）</span>
+      </div>
+      <input id="ntServerchan" autocomplete="off" placeholder="粘贴 Server酱 SendKey（可选，和上面二选一）">
+    </div>
+
+    <div class="nt-block">
+      <div class="nt-head">
+        <span class="nt-name">企业微信群机器人</span>
+      </div>
+      <input id="ntWecom" autocomplete="off" placeholder="粘贴企业微信群机器人的 Webhook 地址">
+      <div class="nt-desc">企业微信群里 → 群设置 → 群机器人 → 添加，复制 Webhook 地址。浏览器直连企业微信会被跨域限制，消息能发出但拿不到回执，建议先点「发送测试」到群里确认一次。</div>
+    </div>
+
+    <div class="nt-result" id="ntResult"></div>
+    <div class="nt-readonly">
+      微信渠道有额度限制：PushPlus 实名用户每天 200 条、<b>每分钟最多 5 条</b>。
+      同一分钟内的第 6 条会被自动排队，等额度空出来再补发，不会丢。
+    </div>
+    <div class="nt-readonly" id="ntAdminOnly" style="display:none;">
+      微信 / 企业微信的推送地址只有主管能修改。你可以开启本机的桌面提醒。
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="ntTest">发送测试</button>
+      <div class="right">
+        <button class="btn btn-ghost" id="ntCancel">关闭</button>
+        <button class="btn btn-primary" id="ntSave">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 制作要求常用词管理 -->
+<div class="mask" id="chipsMask">
+  <div class="modal" style="width:440px;">
+    <h2>制作要求 · 常用词</h2>
+    <div class="form-row">
+      <label>当前常用词（↑ 调整顺序 · × 删除）<br>前 6 个常驻显示在输入框上方，其余收在「更多」里</label>
+      <div class="chip-row" id="chipsEdit"></div>
+    </div>
+    <div class="form-row">
+      <label>添加新词</label>
+      <div style="display:flex;gap:8px;">
+        <input id="chipNew" autocomplete="off" placeholder="例：激光切割" style="flex:1;">
+        <button class="btn btn-ghost" id="chipAddBtn">添加</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div class="right">
+        <button class="btn btn-ghost" id="chipsCancel">取消</button>
+        <button class="btn btn-primary" id="chipsSave">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script src="app.js?v=202609304"></script>
+<script>
+  let editingId = null;   // null = 新建
+  let editingStatus = 'todo';
+  let editingImages = [];
+  let editingFiles = [];  // 附件：{ n, u, s, t }
+  let editingChips = [];  // 点选的常用词，单独存订单的 chips 字段，大屏和手写文字分开显示
+  let editingOrder = null;
+  let session = null;
+  let accounts = [];      /* 云端账号列表（只有姓名和角色） */
+  let filters = { status: 'all', kw: '', owner: 'all', sort: 'due', onlyQ: false };
+
+  /* ===== 登录 / 注册 ===== */
+  function showPane(which) {
+    document.getElementById('paneLogin').style.display = which === 'login' ? '' : 'none';
+    document.getElementById('paneReg').style.display = which === 'reg' ? '' : 'none';
+    document.getElementById(which === 'login' ? 'loginName' : 'regName').focus();
+  }
+
+  /* 账号下拉用原生 select：datalist 在微信/安卓 WebView 里渲染会错位重叠 */
+  async function fillAccountSelect() {
+    const sel = document.getElementById('loginName');
+    try {
+      accounts = await fetchAccounts();
+    } catch (e) {
+      accounts = [];
+      sel.innerHTML = '<option value="">云端连接中…</option>';
+      return;
+    }
+    if (!accounts.length) {
+      sel.innerHTML = '<option value="">还没有账号，请先注册业务员</option>';
+      return;
+    }
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">请选择姓名</option>' +
+      accounts.map(a => '<option value="' + esc(a.name) + '">' + esc(a.name) +
+        (a.role === 'admin' ? '（主管）' : '（业务员）') + '</option>').join('');
+    if (cur) sel.value = cur;
+    /* 自动登录场景：账号列表此刻才到齐。若编辑弹窗已开着，
+       重刷业务员下拉，把之前误标的「已停用」纠正回来 */
+    if (session) {
+      applyRole();
+      if (editingOrder) {
+        const v = editingOrder.owner === '未分配' ? '' : (editingOrder.owner || '');
+        const op = document.getElementById('fOwnerInput');
+        if (!op.disabled && v && !Array.prototype.some.call(op.options, x => x.value === v)) {
+          op.insertAdjacentHTML('beforeend',
+            '<option value="' + esc(v) + '">' + esc(v) + '（已停用）</option>');
+        }
+        if (v) op.value = v;
+      }
+    }
+  }
+
+  /* 进入工作台 */
+  function enterApp() {
+    document.body.classList.remove('locked');
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('userChip').style.display = '';
+    document.getElementById('curUser').innerHTML =
+      '当前登录：<b>' + esc(session.name) + '</b>' +
+      (session.role === 'admin' ? '（主管·可见全部）' : '');
+    /* 「清空全部工单」是危险操作，只给主管 */
+    document.getElementById('btnClearAll').style.display =
+      session.role === 'admin' ? '' : 'none';
+    applyRole();
+    renderList();
+    checkFreshEvents();   /* 登录进来先对齐一次事件基线 */
+  }
+
+  function initAuth() {
+    session = getSession();
+    if (session) {
+      enterApp();
+    } else {
+      document.body.classList.add('locked');
+      document.getElementById('loginWrap').style.display = 'flex';
+      showPane('login');
+    }
+    /* 两种情况都要拉账号列表：登录页选名字用；自动登录后弹窗指派业务员用。
+       之前只在登录页拉，自动登录的人账号列表一直是空的，
+       打开编辑弹窗时负责人会被误标成「已停用」 */
+    fillAccountSelect();
+  }
+
+  /* 业务员只能管自己的单；主管可以指派给任意业务员 */
+  function applyRole() {
+    const isStaff = session.role !== 'admin';
+    document.getElementById('fOwner').style.display = isStaff ? 'none' : '';
+    const op = document.getElementById('fOwnerInput');
+    if (isStaff) {
+      op.innerHTML = '<option value="' + esc(session.name) + '">' + esc(session.name) + '</option>';
+      op.disabled = true;
+    } else {
+      const staff = accounts.filter(a => a.role !== 'admin').map(a => a.name);
+      const names = staff.length ? staff : accounts.map(a => a.name);
+      op.disabled = false;
+      op.innerHTML = '<option value="">未分配</option>' +
+        names.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+    }
+  }
+
+  async function doLogin() {
+    const name = document.getElementById('loginName').value.trim();
+    const pwd = document.getElementById('loginPwd').value.trim();
+    const err = document.getElementById('loginErr');
+    const btn = document.getElementById('btnLogin');
+    if (!name) { err.textContent = '请先选择姓名'; return; }
+    if (!pwd) { err.textContent = '请输入密码'; return; }
+    err.textContent = '';
+    btn.disabled = true; btn.textContent = '登录中…';
+    const r = await loginUser(name, pwd);
+    btn.disabled = false; btn.textContent = '登录';
+    if (!r.ok) { err.textContent = r.msg; return; }
+    session = r.session;
+    document.getElementById('loginPwd').value = '';
+    enterApp();
+    toast('欢迎，' + session.name);
+  }
+
+  async function doRegister() {
+    const name = document.getElementById('regName').value.trim();
+    const pwd = document.getElementById('regPwd').value;
+    const pwd2 = document.getElementById('regPwd2').value;
+    const invite = document.getElementById('regInvite').value.trim();
+    const err = document.getElementById('regErr');
+    const btn = document.getElementById('btnReg');
+    if (!name) { err.textContent = '请填写姓名'; return; }
+    if (pwd.length < 6) { err.textContent = '密码至少 6 位'; return; }
+    if (pwd !== pwd2) { err.textContent = '两次输入的密码不一样'; return; }
+    if (!invite) { err.textContent = '请填写邀请码'; return; }
+    err.textContent = '';
+    btn.disabled = true; btn.textContent = '注册中…';
+    const r = await registerUser(name, pwd, invite);
+    btn.disabled = false; btn.textContent = '注册并登录';
+    if (!r.ok) { err.textContent = r.msg; return; }
+    session = r.session;
+    ['regName', 'regPwd', 'regPwd2', 'regInvite'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    enterApp();
+    toast('注册成功，欢迎 ' + session.name);
+  }
+
+  document.getElementById('btnLogin').onclick = doLogin;
+  document.getElementById('btnReg').onclick = doRegister;
+  document.getElementById('btnToReg').onclick = () => showPane('reg');
+  document.getElementById('btnBackLogin').onclick = () => showPane('login');
+  document.getElementById('loginPwd').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
+  document.getElementById('loginName').onchange = () => {
+    if (document.getElementById('loginName').value) document.getElementById('loginPwd').focus();
+  };
+  document.getElementById('regInvite').onkeydown = e => { if (e.key === 'Enter') doRegister(); };
+  document.getElementById('btnLogout').onclick = () => {
+    if (!confirm('退出登录？')) return;
+    clearSession();
+    location.reload();
+  };
+
+  /* ===== 通知设置 ===== */
+  const noticeMask = document.getElementById('noticeMask');
+
+  function paintDesktopBtn() {
+    const btn = document.getElementById('ntDesktopBtn');
+    const desc = document.getElementById('ntDesktopDesc');
+    const perm = desktopNotifyPermission();
+    if (perm === 'unsupported') {
+      btn.textContent = '不支持';
+      btn.disabled = true;
+      desc.textContent = '当前浏览器不支持系统通知，换成 Chrome 或 Edge 打开就好。';
+      return;
+    }
+    if (perm === 'denied') {
+      btn.textContent = '被浏览器拦住';
+      btn.disabled = true;
+      desc.textContent = '你之前拒绝过通知权限。点地址栏左侧的锁图标 → 通知 → 允许，刷新页面后再来开。';
+      return;
+    }
+    btn.disabled = false;
+    btn.textContent = desktopNotifyOn() ? '已开启（点击关闭）' : '开启';
+  }
+
+  document.getElementById('ntDesktopBtn').onclick = async function () {
+    if (desktopNotifyOn()) {
+      setDesktopNotify(false);
+      paintDesktopBtn();
+      toast('本机桌面提醒已关闭');
+      return;
+    }
+    if (desktopNotifyPermission() !== 'granted') {
+      const r = await askDesktopNotifyPermission();
+      if (r !== 'granted') { paintDesktopBtn(); toast('浏览器没有授予通知权限'); return; }
+    }
+    setDesktopNotify(true);
+    paintDesktopBtn();
+    beep();
+    toast('桌面提醒已开启，有新反馈会响铃弹窗');
+  };
+
+  async function openNotice() {
+    const isAdmin = !!(session && session.role === 'admin');
+    ['ntPushplus', 'ntServerchan', 'ntWecom'].forEach(id => {
+      document.getElementById(id).disabled = !isAdmin;
+    });
+    document.getElementById('ntAdminOnly').style.display = isAdmin ? 'none' : '';
+    document.getElementById('ntResult').textContent = '';
+    const cfg = await loadNotifySettings();
+    document.getElementById('ntPushplus').value = cfg.pushplus || '';
+    document.getElementById('ntServerchan').value = cfg.serverchan || '';
+    document.getElementById('ntWecom').value = cfg.wecom || '';
+    paintDesktopBtn();
+    noticeMask.classList.add('open');
+  }
+
+  document.getElementById('btnNotice').onclick = openNotice;
+  document.getElementById('ntCancel').onclick = () => noticeMask.classList.remove('open');
+  noticeMask.onclick = e => { if (e.target === noticeMask) noticeMask.classList.remove('open'); };
+
+  document.getElementById('ntSave').onclick = async function () {
+    if (!(session && session.role === 'admin')) {
+      noticeMask.classList.remove('open');
+      toast('桌面提醒设置已保存在本机');
+      return;
+    }
+    const btn = this;
+    const cfg = {
+      pushplus: document.getElementById('ntPushplus').value.trim(),
+      serverchan: document.getElementById('ntServerchan').value.trim(),
+      wecom: document.getElementById('ntWecom').value.trim()
+    };
+    btn.disabled = true;
+    btn.textContent = '保存中…';
+    const ok = await saveNotifySettings(cfg);
+    btn.disabled = false;
+    btn.textContent = '保存';
+    if (ok) { noticeMask.classList.remove('open'); toast('通知配置已保存，所有设备共用'); }
+    else toast('保存失败，请检查网络后重试');
+  };
+
+  document.getElementById('ntTest').onclick = async function () {
+    const box = document.getElementById('ntResult');
+    const cfg = {
+      pushplus: document.getElementById('ntPushplus').value.trim(),
+      serverchan: document.getElementById('ntServerchan').value.trim(),
+      wecom: document.getElementById('ntWecom').value.trim()
+    };
+    if (!cfg.pushplus && !cfg.serverchan && !cfg.wecom) {
+      box.className = 'nt-result err';
+      box.textContent = '先填一个推送地址再测';
+      return;
+    }
+    const b = this;
+    b.disabled = true;
+    b.textContent = '发送中…';
+    box.className = 'nt-result';
+    box.textContent = '正在发送…';
+    const res = await testNotifyChannels(cfg);
+    b.disabled = false;
+    b.textContent = '发送测试';
+    const lines = res.map(r => {
+      let tail = '发送成功';
+      if (r.queued) tail = r.msg || '本分钟额度已满，已排队稍后自动发出';
+      if (r.uncertain) tail = '请求已发出（企业微信不给回执，请到群里确认）';
+      if (!r.ok) tail = '失败 — ' + (r.msg || '未知原因');
+      return (r.ok ? '[成功] ' : '[失败] ') + esc(r.ch) + '：' + esc(tail);
+    });
+    box.className = 'nt-result' + (res.every(r => r.ok) ? '' : ' err');
+    box.innerHTML = lines.join('<br>');
+  };
+
+  /* ===== 修改密码 ===== */
+  const pwdMask = document.getElementById('pwdMask');
+  document.getElementById('btnPwd').onclick = () => {
+    ['pwdOld', 'pwdNew', 'pwdNew2'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('pwdErr').textContent = '';
+    pwdMask.classList.add('open');
+    document.getElementById('pwdOld').focus();
+  };
+  document.getElementById('pwdCancel').onclick = () => pwdMask.classList.remove('open');
+  pwdMask.onclick = e => { if (e.target === pwdMask) pwdMask.classList.remove('open'); };
+  document.getElementById('pwdNew2').onkeydown = e => {
+    if (e.key === 'Enter') document.getElementById('pwdSave').click();
+  };
+  document.getElementById('pwdSave').onclick = async function () {
+    const oldP = document.getElementById('pwdOld').value;
+    const n1 = document.getElementById('pwdNew').value;
+    const n2 = document.getElementById('pwdNew2').value;
+    const err = document.getElementById('pwdErr');
+    if (!oldP) { err.textContent = '请输入原密码'; return; }
+    if (n1.length < 6) { err.textContent = '新密码至少 6 位'; return; }
+    if (n1 !== n2) { err.textContent = '两次输入的新密码不一样'; return; }
+    err.textContent = '';
+    this.disabled = true; this.textContent = '保存中…';
+    const r = await changePassword(session.name, oldP, n1);
+    this.disabled = false; this.textContent = '保存';
+    if (!r.ok) { err.textContent = r.msg; return; }
+    pwdMask.classList.remove('open');
+    toast('密码已修改');
+  };
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1600);
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    const diff = Date.now() - ts, m = 60000, h = 3600000, d = 86400000;
+    if (diff < m) return '刚刚';
+    if (diff < h) return Math.floor(diff / m) + ' 分钟前';
+    if (diff < d) return Math.floor(diff / h) + ' 小时前';
+    const dt = new Date(ts);
+    const p = n => String(n).padStart(2, '0');
+    return (dt.getMonth() + 1) + '月' + dt.getDate() + '日 ' + p(dt.getHours()) + ':' + p(dt.getMinutes());
+  }
+
+  function hasOpenQuestion(o) {
+    return (o.questions || []).some(q => q.text && !q.resolved);
+  }
+
+  /* ===== 筛选 + 排序（先按账号权限过滤） ===== */
+  function visibleOrders() {
+    let list = visibleForSession(loadOrders(), session);
+    if (filters.status !== 'all') list = list.filter(o => o.status === filters.status);
+    if (filters.owner !== 'all') list = list.filter(o => (o.owner || '未分配') === filters.owner);
+    if (filters.onlyQ) list = list.filter(hasOpenQuestion);
+    const kw = filters.kw.trim().toLowerCase();
+    if (kw) {
+      list = list.filter(o =>
+        [o.id, o.customer, o.product, o.note, o.owner].join(' ').toLowerCase().includes(kw));
+    }
+    const rank = { todo: 0, doing: 1, done: 2 };
+    list.sort((a, b) => {
+      if (filters.sort === 'recent') return b.updatedAt - a.updatedAt;
+      if (filters.sort === 'created') return b.createdAt - a.createdAt;
+      if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
+      /* 同状态下加急的排前面 */
+      if (!!a.rush !== !!b.rush) return a.rush ? -1 : 1;
+      const da = a.due || '9999-99-99', db = b.due || '9999-99-99';
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+    return list;
+  }
+
+  function renderStats(all) {
+    const mine = visibleForSession(all, session);
+    document.getElementById('stAll').textContent = mine.length;
+    document.getElementById('stTodo').textContent = mine.filter(o => o.status === 'todo').length;
+    document.getElementById('stDoing').textContent = mine.filter(o => o.status === 'doing').length;
+    document.getElementById('stDone').textContent = mine.filter(o => o.status === 'done').length;
+    document.getElementById('stQ').textContent = mine.filter(hasOpenQuestion).length;
+  }
+
+  function renderOwnerOptions(all) {
+    const owners = Array.from(new Set(all.map(o => o.owner || '未分配'))).sort();
+    const sel = document.getElementById('fOwner');
+    const cur = filters.owner;
+    sel.innerHTML = '<option value="all">全部业务员</option>' +
+      owners.map(o => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('');
+    sel.value = owners.includes(cur) ? cur : 'all';
+    filters.owner = sel.value;
+  }
+
+  function renderList() {
+    if (!session) return;
+    const all = loadOrders();
+    const mine = visibleForSession(all, session);
+    renderStats(all);
+    if (session.role === 'admin') renderOwnerOptions(all);
+    const list = visibleOrders();
+    document.getElementById('hint').textContent =
+      list.length + ' / ' + mine.length + ' 条' + (session.role === 'admin' ? '（全部业务员）' : '（我的订单）');
+
+    document.querySelectorAll('.chip').forEach(c => {
+      const isStatusChip = c.dataset.status !== undefined;
+      c.classList.toggle('on', isStatusChip ? filters.status === c.dataset.status : filters.onlyQ);
+    });
+
+    const el = document.getElementById('list');
+    if (!list.length) {
+      el.innerHTML = '<div class="empty-state">' +
+        (mine.length ? '当前筛选条件下没有订单<br>试试换个筛选条件或清空搜索'
+                     : '你名下还没有订单，点右上角「新建订单」开始') + '</div>';
+      return;
+    }
+    el.innerHTML = list.map(o => {
+      const d = dueInfo(o.due, o.status);
+      const qOpen = hasOpenQuestion(o);
+      const img = o.images && o.images.length
+        ? '<img class="thumb" src="' + o.images[0] + '">'
+        : ((o.doneImages || []).length
+            ? '<img class="thumb" src="' + o.doneImages[0] + '">'
+            : '<div class="thumb empty">无图片</div>');
+      return '<div class="order' + (o.rush ? ' rush-card' : (d.urgent ? ' urgent-card' : '')) +
+        '" data-id="' + esc(o.id) + '">' + img +
+        '<div class="o-body">' +
+          '<div class="o-top"><span class="o-id">' + esc(o.id) + '</span>' +
+          (o.rush ? '<span class="badge-rush">加急</span>' : '') +
+          '<span class="pill" style="background:' + STATUS[o.status].color + '">' + STATUS[o.status].label + '</span>' +
+          (qOpen ? '<span class="badge-q">有疑问' + (attachSummary(o) ? ' · 含图/语音' : '') + '</span>' : '') +
+          ((o.doneImages || []).length ? '<span class="badge-photo">完工图 ' + o.doneImages.length + '</span>' : '') +
+          ((o.doneAudio && o.doneAudio.u) ? '<span class="badge-photo">完工语音</span>' : '') +
+          ((o.files || []).length ? '<span class="badge-file">📎 附件 ' + o.files.length + '</span>' : '') +
+          '</div>' +
+          '<div class="o-product">' + esc(o.product) + '</div>' +
+          '<div class="o-meta"><span>' + esc(o.owner || '未分配') + '</span>' +
+          '<span>' + esc(o.customer) + '</span>' +
+          '<span>×' + esc(o.qty) + '</span>' +
+          '<span class="' + (d.urgent ? 'urgent' : '') + '">' + d.text + '</span></div>' +
+          '<div class="o-time">更新于 ' + fmtTime(o.updatedAt) + '</div>' +
+        '</div></div>';
+    }).join('');
+    el.querySelectorAll('.order').forEach(node => {
+      node.onclick = () => openModal(node.dataset.id);
+    });
+  }
+
+  /* ===== 筛选交互 ===== */
+  document.querySelectorAll('.chip').forEach(c => {
+    c.onclick = () => {
+      if (c.dataset.status !== undefined) {
+        filters.status = c.dataset.status;
+      } else {
+        filters.onlyQ = !filters.onlyQ;
+      }
+      renderList();
+    };
+  });
+  document.getElementById('fKeyword').oninput = e => { filters.kw = e.target.value; renderList(); };
+  document.getElementById('fOwner').onchange = e => { filters.owner = e.target.value; renderList(); };
+  document.getElementById('fSort').onchange = e => { filters.sort = e.target.value; renderList(); };
+
+  /* ===== 导出 CSV（Excel 可直接打开） ===== */
+  document.getElementById('btnExport').onclick = function () {
+    const list = visibleOrders();
+    if (!list.length) { toast('当前没有可导出的订单'); return; }
+    const head = ['订单号', '业务员', '客户', '产品', '数量', '交期', '状态', '加急', '制作要求', '附件数', '疑问条数', '创建时间', '更新时间'];
+    const rows = [head].concat(list.map(o => [
+      o.id, o.owner || '未分配', o.customer, o.product, o.qty, o.due || '',
+      STATUS[o.status].label, o.rush ? '是' : '',
+      (o.note || '').replace(/\n/g, ' '),
+      (o.files || []).length,
+      (o.questions || []).length,
+      new Date(o.createdAt).toLocaleString('zh-CN'),
+      new Date(o.updatedAt).toLocaleString('zh-CN')
+    ]));
+    const csv = '\ufeff' + rows.map(r =>
+      r.map(c => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '工单导出_' + today(0) + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    toast('已导出 ' + list.length + ' 条订单');
+  };
+
+  /* ===== 清空全部工单（危险操作，只给主管） ===== */
+  const btnClearAll = document.getElementById('btnClearAll');
+  btnClearAll.onclick = async function () {
+    if (!confirm('将清空云端全部工单（含已完成的历史单）。\n所有设备都会同步变成空的，此操作不可恢复。确定继续？')) return;
+    btnClearAll.disabled = true;
+    toast('正在清空…');
+    const ok = await clearAllOrders();
+    btnClearAll.disabled = false;
+    closeModal();
+    renderList();
+    toast(ok ? '已清空全部工单' : '清空失败，请检查网络');
+  };
+
+  /* ===== 弹窗 ===== */
+  function renderStatusSeg() {
+    document.querySelectorAll('#fStatus button').forEach(b => {
+      b.classList.toggle('on', b.dataset.v === editingStatus);
+      b.style.background = b.dataset.v === editingStatus ? STATUS[editingStatus].color : '#fff';
+      b.style.color = b.dataset.v === editingStatus ? '#fff' : '#444441';
+    });
+  }
+
+  function renderImages() {
+    const box = document.getElementById('imgs');
+    let html = editingImages.map((src, i) =>
+      '<div class="img-item"><img src="' + src + '">' +
+      '<button class="del" data-i="' + i + '">×</button></div>').join('');
+    html += '<div class="upload-box" id="uploadBox">＋<br>上传图片</div>';
+    box.innerHTML = html;
+    box.querySelectorAll('.del').forEach(b => {
+      b.onclick = e => { e.stopPropagation(); editingImages.splice(+b.dataset.i, 1); renderImages(); };
+    });
+    box.querySelector('#uploadBox').onclick = () => document.getElementById('fileInput').click();
+  }
+
+  /* ===== 附件（原文件，工人端可下载） ===== */
+  function renderFiles() {
+    const box = document.getElementById('fileList');
+    let html = editingFiles.map((f, i) =>
+      '<div class="file-item"><span class="f-ic">' + fileIcon(f.n) + '</span>' +
+      '<span class="f-name" title="' + esc(f.n) + '">' + esc(f.n) + '</span>' +
+      '<span class="f-size">' + formatSize(f.s) + '</span>' +
+      '<button class="f-dl" data-fi="' + i + '">下载</button>' +
+      '<button class="f-del" data-fi="' + i + '">删除</button></div>').join('');
+    if (editingFiles.length < FILE_MAX_COUNT) {
+      html += '<span class="file-add" id="fileAdd">＋ 上传附件</span>';
+    }
+    box.innerHTML = html;
+    box.querySelectorAll('.f-del').forEach(b => {
+      b.onclick = () => { editingFiles.splice(+b.dataset.fi, 1); renderFiles(); };
+    });
+    box.querySelectorAll('.f-dl').forEach(b => {
+      b.onclick = () => {
+        const f = editingFiles[+b.dataset.fi];
+        if (f) downloadDataFile(f.n, f.u);
+      };
+    });
+    const add = box.querySelector('#fileAdd');
+    if (add) add.onclick = () => document.getElementById('fileDocInput').click();
+  }
+
+  document.getElementById('fileDocInput').onchange = function () {
+    const files = Array.from(this.files || []);
+    this.value = '';
+    const left = FILE_MAX_COUNT - editingFiles.length;
+    if (!files.length) return;
+    if (files.length > left) {
+      toast('附件最多 ' + FILE_MAX_COUNT + ' 个，本次只取前 ' + left + ' 个');
+    }
+    files.slice(0, left).forEach(f => {
+      if (f.size > fileSizeLimitBytes()) {
+        toast('「' + f.name + '」超过 ' + FILE_MAX_MB + 'MB，没加上。可先压缩或导出 PDF 再传');
+        return;
+      }
+      const r = new FileReader();
+      r.onload = e => {
+        editingFiles.push({ n: f.name, u: e.target.result, s: f.size, t: Date.now() });
+        renderFiles();
+      };
+      r.readAsDataURL(f);
+    });
+  };
+
+  /* ===== 制作端疑问处理（支持多次提问，问答留档；可带图 + 语音） ===== */
+  /* 工人提问时附的图（可点开大图）和语音（直接试听） */
+  function qAttHtml(q) {
+    const imgs = q.images || [];
+    const hasA = q.audio && q.audio.u;
+    if (!imgs.length && !hasA) return '';
+    return '<div class="q-att">' +
+      imgs.map(s => '<img class="q-zoom" src="' + s + '">').join('') +
+      (hasA ? '<audio controls preload="metadata" src="' + q.audio.u + '"></audio>' : '') +
+      '</div>';
+  }
+
+  /* 附件摘要，冒号后给列表卡片用 */
+  function attachSummary(o) {
+    return (o.questions || []).some(q => !q.resolved && ((q.images || []).length || (q.audio && q.audio.u)));
+  }
+
+  function renderQArea() {
+    const row = document.getElementById('qAreaRow');
+    const qs = (editingOrder && editingOrder.questions || [])
+      .filter(q => q.text || (q.images || []).length || (q.audio && q.audio.u));
+    if (!qs.length) { row.style.display = 'none'; return; }
+    row.style.display = '';
+    const box = document.getElementById('qArea');
+    box.innerHTML = '<div class="q-list">' + qs.map(q => {
+      const idx = editingOrder.questions.indexOf(q);
+      const att = qAttHtml(q);
+      if (q.resolved) {
+        return '<div class="q-box resolved">已解决 · 疑问：' + esc(q.text) + att +
+          '<br>回复：' + esc(q.reply) + '</div>';
+      }
+      if (q.reply) {
+        return '<div class="q-box replied">疑问：' + esc(q.text) + att +
+          '<br>已回复：' + esc(q.reply) + '（等待制作端确认）</div>';
+      }
+      return '<div class="q-box pending">' + esc(q.text) + att +
+        '<div class="q-reply-row"><input class="q-reply-input" autocomplete="off" data-qi="' + idx +
+        '" placeholder="输入答复，会显示到大屏上…">' +
+        '<button class="q-reply-btn" data-qi="' + idx + '">回复</button></div></div>';
+    }).join('') + '</div>';
+    box.querySelectorAll('.q-reply-btn').forEach(b => {
+      b.onclick = () => submitReply(+b.dataset.qi);
+    });
+    box.querySelectorAll('.q-reply-input').forEach(inp => {
+      inp.onkeydown = e => { if (e.key === 'Enter') submitReply(+inp.dataset.qi); };
+    });
+    box.querySelectorAll('.q-zoom').forEach(im => {
+      im.onclick = () => {
+        document.getElementById('lightboxImg').src = im.src;
+        document.getElementById('lightbox').classList.add('open');
+      };
+    });
+  }
+
+  function submitReply(qi) {
+    const input = document.querySelector('.q-reply-input[data-qi="' + qi + '"]');
+    const text = input ? input.value.trim() : '';
+    if (!text) { toast('请输入答复内容'); return; }
+    updateOrders(list => {
+      const o = list.find(x => x.id === editingId);
+      if (o && o.questions[qi]) { o.questions[qi].reply = text; o.questions[qi].replyAt = Date.now(); }
+    });
+    editingOrder = loadOrders().find(x => x.id === editingId);
+    renderQArea(); renderList();
+    toast('已回复，大屏会自动显示');
+  }
+
+  function openModal(id) {
+    editingId = id || null;
+    clearUnread();   /* 人已经在看工作台了，标题角标清零 */
+    const o = id ? loadOrders().find(x => x.id === id) : null;
+    editingOrder = o;
+    document.getElementById('mTitle').textContent = o ? '编辑订单 ' + o.id : '新建订单';
+    document.getElementById('fCustomer').value = o ? o.customer : '';
+    document.getElementById('fProduct').value = o ? o.product : '';
+    document.getElementById('fQty').value = o ? o.qty : '';
+    document.getElementById('fDue').value = o ? o.due : today(0);
+    /* 业务员下拉：主管可指派给谁，业务员锁死成自己 */
+    applyRole();
+    const op = document.getElementById('fOwnerInput');
+    const ownerVal = o
+      ? (o.owner === '未分配' ? '' : (o.owner || ''))
+      : (session.role === 'staff' ? session.name : '');
+    if (ownerVal && !Array.prototype.some.call(op.options, x => x.value === ownerVal)) {
+      op.insertAdjacentHTML('beforeend',
+        '<option value="' + esc(ownerVal) + '">' + esc(ownerVal) + '（已停用）</option>');
+    }
+    op.value = ownerVal;
+    if (o && Array.isArray(o.chips) && o.chips.length) {
+      /* 新数据：常用词单独存着，直接用 */
+      editingChips = o.chips.slice();
+      document.getElementById('fNote').value = o.note || '';
+    } else if (o) {
+      /* 老数据：常用词混在 note 文字里，拆出来转成新格式（拆完文字里就不重复了） */
+      const legacy = (typeof splitNote === 'function') ? splitNote(o.note) : { chips: [], text: o.note || '' };
+      editingChips = legacy.chips;
+      document.getElementById('fNote').value = legacy.text;
+    } else {
+      editingChips = [];
+      document.getElementById('fNote').value = '';
+    }
+    renderChips();          /* 按已点选的常用词点亮标签 */
+    editingStatus = o ? o.status : 'todo';
+    editingImages = o ? (o.images || []).slice() : [];
+    editingFiles = o ? JSON.parse(JSON.stringify(o.files || [])) : [];
+    document.getElementById('fRush').checked = !!(o && o.rush);
+    document.getElementById('btnDelete').style.display = o ? '' : 'none';
+    renderStatusSeg(); renderImages(); renderFiles(); renderQArea(); renderDoneImgs(o);
+    document.getElementById('mask').classList.add('open');
+    if (!id) document.getElementById('fCustomer').focus();
+  }
+
+  /* 完工反馈：照片 + 语音，只读展示（由制作端在手机上上传） */
+  function renderDoneImgs(o) {
+    const row = document.getElementById('doneRow');
+    const box = document.getElementById('doneImgs');
+    const imgs = (o && o.doneImages) || [];
+    const au = (o && o.doneAudio && o.doneAudio.u) ? o.doneAudio : null;
+    if (!imgs.length && !au) { row.style.display = 'none'; box.innerHTML = ''; return; }
+    row.style.display = '';
+    box.innerHTML = imgs.map(src =>
+      '<div class="img-item"><img class="q-zoom" src="' + src + '"></div>').join('') +
+      (au ? '<audio controls preload="metadata" src="' + au.u + '" style="height:36px;"></audio>' : '');
+    box.querySelectorAll('.q-zoom').forEach(im => {
+      im.onclick = () => {
+        document.getElementById('lightboxImg').src = im.src;
+        document.getElementById('lightbox').classList.add('open');
+      };
+    });
+  }
+
+  function closeModal() { document.getElementById('mask').classList.remove('open'); }
+
+  document.getElementById('btnNew').onclick = () => openModal(null);
+  document.getElementById('btnCancel').onclick = closeModal;
+  document.getElementById('mask').onclick = e => { if (e.target === e.currentTarget) closeModal(); };
+  document.getElementById('lightbox').onclick = function () { this.classList.remove('open'); };
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('mask').classList.contains('open')) closeModal();
+  });
+
+  document.querySelectorAll('#fStatus button').forEach(b => {
+    b.onclick = () => { editingStatus = b.dataset.v; renderStatusSeg(); };
+  });
+
+  document.getElementById('fileInput').onchange = function () {
+    const files = Array.from(this.files || []);
+    files.forEach(f => compressImage(f, dataUrl => {
+      editingImages.push(dataUrl); renderImages();
+    }));
+    this.value = '';
+  };
+
+  document.getElementById('btnSave').onclick = async function () {
+    const btn = this;
+    const customer = document.getElementById('fCustomer').value.trim();
+    const product = document.getElementById('fProduct').value.trim();
+    if (!customer || !product) { toast('客户名称和产品名称必填'); return; }
+    const data = {
+      customer: customer,
+      product: product,
+      owner: session.role === 'staff'
+        ? session.name
+        : (document.getElementById('fOwnerInput').value.trim() || '未分配'),
+      qty: parseInt(document.getElementById('fQty').value) || 1,
+      due: document.getElementById('fDue').value,
+      note: document.getElementById('fNote').value.trim(),
+      chips: editingChips.slice(),
+      status: editingStatus,
+      rush: document.getElementById('fRush').checked,
+      images: editingImages,
+      files: editingFiles,
+      updatedAt: Date.now()
+    };
+    if (editingId) {
+      updateOrders(list => {
+        const o = list.find(x => x.id === editingId);
+        Object.assign(o, data);
+      });
+      toast('已保存');
+    } else {
+      btn.disabled = true;   /* 防止连点生成两个号 */
+      try {
+        data.id = await genOrderId();   /* 实时查云端取号，保证不重号 */
+      } finally {
+        btn.disabled = false;
+      }
+      if (!data.id) { toast('取订单号失败，请检查网络后重试'); return; }
+      data.createdAt = Date.now();
+      data.questions = [];
+      updateOrders(list => list.unshift(data));
+      toast('订单已创建：' + data.id);
+    }
+    closeModal(); renderList();
+  };
+
+  document.getElementById('btnDelete').onclick = function () {
+    if (!editingId) return;
+    if (!confirm('确定删除订单 ' + editingId + '？此操作不可恢复。')) return;
+    updateOrders(list => list.splice(list.findIndex(x => x.id === editingId), 1));
+    closeModal(); renderList(); toast('已删除');
+  };
+
+  /* 云端数据有变化（可能是别的设备改的）时：
+     刷新列表，并同步打开着的弹窗里的疑问 / 完工反馈 */
+  function syncEditingModal() {
+    if (!editingId) return;
+    if (!document.getElementById('mask').classList.contains('open')) return;
+    const fresh = loadOrders().find(x => x.id === editingId);
+    if (!fresh) return;
+    if (JSON.stringify(fresh.questions) !==
+        JSON.stringify(editingOrder && editingOrder.questions)) {
+      editingOrder = fresh;
+      renderQArea();
+    }
+    const mediaSig = x => ((x && x.doneImages) || []).length + ':' +
+      ((x && x.doneAudio && x.doneAudio.d) || 0);
+    if (mediaSig(fresh) !== mediaSig(editingOrder)) {
+      editingOrder = fresh;
+      renderDoneImgs(fresh);
+    }
+  }
+
+  /* 云端数据一变就检查：有没有新疑问 / 新完工，有就弹桌面提醒 + 标未读。
+     第一次调用只负责建立基线（把当前已有的反馈记为已见），不弹历史。 */
+  function checkFreshEvents() {
+    if (!session || !store.ready) return;
+    const firstTime = localStorage.getItem(SEEN_EVENTS_KEY) === null;
+    const fresh = takeNewEvents(visibleForSession(loadOrders(), session));
+    if (firstTime || !fresh.length) return;
+    fresh.forEach(ev => {
+      if (ev.kind === 'question') {
+        showDesktopNotice((ev.order.rush ? '【加急·工单疑问】' : '【工单疑问】') + ev.order.id,
+          (ev.order.product || '') + '\n' + (ev.question.text || '（有图片或语音，打开工作台看）'));
+      } else {
+        showDesktopNotice((ev.order.rush ? '【加急·工单完工】' : '【工单完工】') + ev.order.id,
+          ev.order.product || '工单已完成');
+      }
+    });
+    bumpUnread(fresh.length);
+  }
+
+  function onCloudData() {
+    if (!session) return;
+    renderList();
+    syncEditingModal();
+    checkFreshEvents();
+  }
+
+  /* ===== 制作要求快捷标签（点一下填进输入框，常用词可自定义、云端同步） ===== */
+  const CHIPS_KEY = 'note_chips';
+  const CHIPS_DEFAULT = ['激光切割', '开孔', 'UV打印', '抛光', '丝印', '折弯', '粘接', '包边', '刻字', '打灯测试'];
+  let noteChips = null;   /* null = 还没从云端拉到，先用默认 */
+  let chipsExpanded = false;   /* 混合式：是否展开了「更多」里的词 */
+  const CHIP_HEAD = 6;         /* 常驻显示前 6 个最常用的，其余收进「更多」 */
+
+  function chipsList() { return noteChips || CHIPS_DEFAULT; }
+
+  function renderChips() {
+    const list = chipsList();
+    const showAll = chipsExpanded || list.length <= CHIP_HEAD;
+    const shown = showAll ? list : list.slice(0, CHIP_HEAD);
+    let html = shown.map(function (w) {
+      const used = editingChips.indexOf(w) >= 0;
+      return '<button type="button" class="chip' + (used ? ' on' : '') + '" data-w="' + esc(w) + '">' + esc(w) + '</button>';
+    }).join('');
+    if (list.length > CHIP_HEAD) {
+      /* 收起来的词里如果有已点选的，给个浅蓝底提示，免得以为没生效 */
+      const hiddenUsed = !chipsExpanded && list.slice(CHIP_HEAD).some(function (w) { return editingChips.indexOf(w) >= 0; });
+      html += '<button type="button" class="chip chip-more' + (hiddenUsed ? ' has-on' : '') + '">' +
+        (chipsExpanded ? '收起 ▴' : '更多 ' + (list.length - CHIP_HEAD) + ' ▾') + '</button>';
+    }
+    document.getElementById('chipRow').innerHTML = html;
+  }
+
+  /* 点标签：只是选中/取消这个常用词（存到订单的 chips 字段），不动下面的文字框。
+     大屏会把常用词做成气泡、手写文字单独一块，互不混在一起 */
+  document.getElementById('chipRow').addEventListener('click', function (e) {
+    if (e.target.closest('.chip-more')) { chipsExpanded = !chipsExpanded; renderChips(); return; }
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    const w = btn.dataset.w;
+    const i = editingChips.indexOf(w);
+    if (i >= 0) editingChips.splice(i, 1);
+    else {
+      if (editingChips.length >= 10) { toast('常用词最多选 10 个'); return; }
+      editingChips.push(w);
+    }
+    renderChips();
+  });
+
+  async function loadChips() {
+    const v = await loadSetting(CHIPS_KEY);
+    if (Array.isArray(v) && v.length) noteChips = v;
+    /* 同步一份给 app.js 的 splitNote：编辑老订单时从文字里拆常用词要用 */
+    if (typeof noteChipWords !== 'undefined') noteChipWords = chipsList().slice();
+    renderChips();
+  }
+
+  /* 常用词管理弹窗 */
+  const chipsMask = document.getElementById('chipsMask');
+  function renderChipsEdit() {
+    document.getElementById('chipsEdit').innerHTML = chipsList().map(function (w, i) {
+      return '<span class="chip">' + esc(w) +
+        '<span class="chip-up" data-i="' + i + '" title="上移">↑</span>' +
+        '<span class="chip-del" data-i="' + i + '" title="删除">×</span></span>';
+    }).join('') || '<span style="font-size:13px;color:#888780;">暂无，先在下面添加</span>';
+  }
+  document.getElementById('chipsEdit').addEventListener('click', function (e) {
+    const arr = noteChips || (noteChips = CHIPS_DEFAULT.slice());
+    const up = e.target.closest('.chip-up');
+    if (up) {
+      const i = +up.dataset.i;
+      if (i > 0) { const t = arr[i]; arr[i] = arr[i - 1]; arr[i - 1] = t; renderChipsEdit(); }
+      return;
+    }
+    const d = e.target.closest('.chip-del');
+    if (!d) return;
+    arr.splice(+d.dataset.i, 1);
+    renderChipsEdit();
+  });
+  function addChip() {
+    const inp = document.getElementById('chipNew');
+    const w = inp.value.trim();
+    if (!w) return;
+    if (chipsList().indexOf(w) >= 0) { toast('已经有这个词了'); return; }
+    if (chipsList().length >= 24) { toast('最多 24 个，先删掉不常用的'); return; }
+    (noteChips || (noteChips = CHIPS_DEFAULT.slice())).push(w);
+    inp.value = '';
+    renderChipsEdit();
+  }
+  document.getElementById('chipAddBtn').onclick = addChip;
+  document.getElementById('chipNew').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addChip(); } });
+  document.getElementById('chipManage').onclick = function () { renderChipsEdit(); chipsMask.classList.add('open'); };
+  document.getElementById('chipsCancel').onclick = () => chipsMask.classList.remove('open');
+  chipsMask.onclick = e => { if (e.target === chipsMask) chipsMask.classList.remove('open'); };
+  document.getElementById('chipsSave').onclick = async function () {
+    if (noteChips && noteChips.length) {
+      const ok = await saveSetting(CHIPS_KEY, noteChips);
+      if (!ok) localStorage.setItem('note_chips_local', JSON.stringify(noteChips));
+      toast(ok ? '常用词已保存，所有设备共用' : '云端暂不可达，先存在本机了');
+    }
+    chipsMask.classList.remove('open');
+    renderChips();
+  };
+
+  initAuth();               /* 先渲染登录页 / 列表骨架 */
+  loadNotifySettings();     /* 顺带把推送配置读进内存 */
+  loadChips();              /* 制作要求常用词（云端，失败用默认） */
+  /* 云端数据到齐后重绘；之后有变化自动重绘。
+     还没登录时只补刷账号下拉，不白跑一遍列表渲染 */
+  startApp(function () {
+    if (session) {
+      onCloudData();
+      if (!accounts.length) fillAccountSelect();   /* 首次账号拉取失败时补一次 */
+    }
+    else if (!accounts.length) fillAccountSelect();
+  });
+</script>
+</body>
+</html>

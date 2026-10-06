@@ -1,0 +1,5 @@
+# Local working files — never publish
+backup-*.json
+_*
+docs/*.airesult
+.workbuddy/

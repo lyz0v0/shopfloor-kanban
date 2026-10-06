@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生产工单看板</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #10151f; color: #e8eaf0; height: 100vh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  header {
+    padding: 16px 32px 14px; display: flex; align-items: center; gap: 20px;
+    border-bottom: 1px solid rgba(255,255,255,.08); flex-shrink: 0;
+  }
+  header h1 { font-size: 26px; font-weight: 500; letter-spacing: 2px; }
+  header .spacer { flex: 1; }
+  #clock { font-size: 30px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  #dateStr { font-size: 14px; color: #8a93a6; }
+  .hint-bar {
+    flex-shrink: 0; padding: 7px 32px; font-size: 14px; color: #8a93a6;
+    background: rgba(60,52,137,.18); border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .hint-bar b { color: #b3aef0; font-weight: 500; }
+
+  .cols { flex: 1; display: flex; gap: 16px; padding: 16px 20px 18px; min-height: 0; }
+  .col { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .col-head {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    font-size: 20px; font-weight: 500; border-radius: 10px 10px 0 0; flex-shrink: 0;
+  }
+  .col-head .cnt {
+    font-size: 15px; background: rgba(255,255,255,.18); border-radius: 14px;
+    padding: 1px 10px; font-weight: 400;
+  }
+  .col-head .sub { font-size: 14px; font-weight: 400; opacity: .8; }
+  .col-body {
+    flex: 1; overflow-y: auto; padding: 12px; border-radius: 0 0 10px 10px;
+    background: rgba(255,255,255,.04); display: flex; flex-direction: column; gap: 12px;
+  }
+  .col-active .col-head { background: rgba(239,159,39,.18); color: #fac775; }
+  .col-done .col-head { background: rgba(99,153,34,.18); color: #c0dd97; }
+
+  /* ===== 卡片（左内容 + 右二维码） ===== */
+  .card {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: #1a2233; border: 1px solid rgba(255,255,255,.08);
+    border-left: 5px solid #666; border-radius: 10px; padding: 14px;
+  }
+  .card.todo { border-left-color: #e24b4a; }
+  .card.doing { border-left-color: #ef9f27; }
+  .card.done { border-left-color: #639922; opacity: .8; }
+  .card.done .done-mark { color: #c0dd97; }
+  .c-main { flex: 1; min-width: 0; }
+  .c-top { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+  .c-id { font-size: 15px; color: #8a93a6; font-family: monospace; }
+  .c-st { font-size: 13px; padding: 2px 10px; border-radius: 12px; }
+  .c-st.todo { background: rgba(226,75,74,.22); color: #f7a5a5; }
+  .c-st.doing { background: rgba(239,159,39,.22); color: #fac775; }
+  .c-rush {
+    font-size: 14px; padding: 2px 12px; border-radius: 12px; font-weight: 500;
+    background: #d92626; color: #fff; letter-spacing: 1px;
+  }
+  .card.rush { border-left-color: #d92626; background: #241a1f; }
+  .c-due { margin-left: auto; font-size: 15px; padding: 2px 12px; border-radius: 16px;
+    background: rgba(255,255,255,.08); color: #b4bccb; }
+  .c-due.urgent { background: rgba(226,75,74,.22); color: #f7a5a5; font-weight: 500; }
+  .c-product { font-size: 22px; font-weight: 500; margin-bottom: 3px; line-height: 1.3; }
+  .c-meta { font-size: 14.5px; color: #8a93a6; margin-bottom: 6px; }
+  .c-note {
+    font-size: 15.5px; line-height: 1.55; color: #c6cddb;
+    background: rgba(255,255,255,.05); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .c-imgs { display: flex; gap: 8px; flex-wrap: wrap; }
+  /* 常用词气泡：工艺一眼可见（远距离比灰字好认） */
+  .c-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .c-chip {
+    font-size: 17px; line-height: 1.35; padding: 4px 16px; border-radius: 20px;
+    background: rgba(55,138,221,.28); color: #9ccbf5;
+    border: 1px solid rgba(133,183,235,.5); white-space: nowrap;
+  }
+  .c-imgs img {
+    height: 54px; border-radius: 8px; cursor: zoom-in;
+    border: 1px solid rgba(255,255,255,.12); object-fit: cover;
+  }
+  .c-files {
+    display: inline-block; font-size: 13px; border-radius: 14px;
+    padding: 3px 12px; margin-bottom: 8px;
+    background: rgba(133,183,235,.15); color: #85b7eb;
+  }
+  .done-mark { font-size: 16px; font-weight: 500; margin-top: 8px; }
+  .empty-tip { text-align: center; color: #8a93a6; font-size: 18px; padding: 60px 0; }
+  .page-ind { margin-left: auto; font-size: 14px; opacity: .85; font-variant-numeric: tabular-nums; }
+  .archived-note {
+    text-align: center; color: #8a93a6; font-size: 13px;
+    padding: 8px 0 2px; border-top: 1px dashed rgba(255,255,255,.12);
+  }
+  .c-q {
+    font-size: 16px; line-height: 1.6; border-radius: 8px;
+    padding: 10px 12px; margin-top: 10px;
+  }
+  .c-q.pending { background: rgba(239,159,39,.15); border: 1px solid rgba(239,159,39,.4); color: #fac775; }
+  .c-q.replied { background: rgba(99,153,34,.15); border: 1px solid rgba(99,153,34,.4); color: #c0dd97; }
+  /* 工人提问时附的图和语音 */
+  .q-att { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .q-att .c-imgs img { height: 62px; }
+  .q-audio-tag {
+    font-size: 14px; background: rgba(255,255,255,.12); border-radius: 14px;
+    padding: 4px 13px; color: #dfe4ee;
+  }
+
+  /* ===== 右侧扫码面板 ===== */
+  .scan-panel {
+    width: 244px; flex-shrink: 0; display: flex; flex-direction: column;
+    gap: 12px; padding: 16px; border-radius: 12px;
+    background: rgba(60,52,137,.18); border: 1px solid rgba(255,255,255,.1);
+  }
+  .sp-title { font-size: 17px; font-weight: 500; color: #b3aef0; letter-spacing: 1px; text-align: center; }
+  .sp-qr { background: #fff; border-radius: 10px; padding: 10px; }
+  .sp-qr canvas, .sp-qr img { width: 100% !important; height: auto !important; display: block; }
+  .sp-qr-cap { font-size: 12.5px; color: #2c2c2a; text-align: center; margin-top: 7px; font-weight: 500; }
+  .sp-steps { font-size: 13.5px; color: #c6cddb; line-height: 2; }
+  .sp-steps i {
+    font-style: normal; display: inline-block; width: 17px; height: 17px; line-height: 17px;
+    text-align: center; border-radius: 50%; background: rgba(255,255,255,.16);
+    font-size: 11.5px; margin-right: 6px; vertical-align: 1px;
+  }
+  .sp-note { font-size: 12.5px; color: #8a93a6; line-height: 1.75; margin-top: auto; }
+
+  /* 图片放大 */
+  #lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 50;
+    display: none; align-items: center; justify-content: center; cursor: zoom-out;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 92%; max-height: 92%; border-radius: 8px; }
+
+  /* ===== 手机端适配：三栏改纵向堆叠，允许页面滚动，分页轮播自动停用 ===== */
+  @media (max-width: 860px) {
+    body { height: auto; min-height: 100vh; overflow: auto; }
+    header { padding: 10px 14px; gap: 8px; flex-wrap: wrap; }
+    header h1 { font-size: 18px; letter-spacing: 1px; }
+    #clock { font-size: 18px; }
+    #dateStr { font-size: 12px; }
+    .hint-bar { padding: 7px 14px; font-size: 12.5px; line-height: 1.6; }
+    .cols { flex-direction: column; padding: 12px 12px 24px; }
+    .col-body { overflow: visible; }
+    .c-product { font-size: 19px; }
+    .c-note { font-size: 14px; }
+    .scan-panel { width: 100%; }
+    .sp-note { margin-top: 0; }
+  }
+  /* ===== 电视模式（地址后加 ?tv=1 启用）=====
+     无人值守要点：全屏 + 屏幕常亮 + 隐藏鼠标 + 定时整页自刷新 + 掉线提示 */
+  body.tv-mode { cursor: none; }          /* 电视上不需要鼠标光标 */
+  #tvTip {
+    position: fixed; inset: 0; z-index: 999; display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    background: rgba(9,13,20,.86); text-align: center; cursor: pointer; padding: 0 40px;
+  }
+  body.tv-mode #tvTip.show { display: flex; }
+  #tvTip .big { font-size: 34px; font-weight: 500; letter-spacing: 1px; }
+  #tvTip .small { font-size: 16px; color: #8a93a6; line-height: 2; }
+  #tvTip .key {
+    display: inline-block; padding: 3px 12px; margin: 0 4px; font-size: 15px; color: #e8eaf0;
+    border: 1px solid rgba(255,255,255,.32); border-radius: 8px;
+  }
+  #offlineBar {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 998; display: none;
+    background: #d92626; color: #fff; font-size: 16px; text-align: center; padding: 9px 16px;
+  }
+  #offlineBar.show { display: block; }
+
+  /* 提示音状态徽章：🔊 已开启（点一下静音） / 🔔 待开启（点一下开启） */
+  #sndBadge {
+    font-size: 14px; color: #8a93a6; cursor: pointer; user-select: none;
+    background: rgba(255,255,255,.08); border-radius: 16px; padding: 5px 13px;
+    white-space: nowrap;
+  }
+  #sndBadge.off { color: #e0a33c; background: rgba(224,163,60,.16); }
+  #sndBadge.mute { color: #7c8494; }
+  body.tv-mode #sndBadge { font-size: 15px; padding: 6px 15px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>生产工单看板</h1>
+  <span id="scopeTag"></span>
+  <div class="spacer"></div>
+  <span id="sndBadge">🔔 提示音待开启</span>
+  <span id="dateStr"></span>
+  <span id="clock">--:--</span>
+</header>
+<div id="offlineBar">⚠ 网络已断开，恢复后会自动刷新本屏，请检查网线 / Wi-Fi</div>
+<div id="tvTip">
+  <div class="big">点一下屏幕，或按遥控器 <span class="key">OK</span> 进入全屏</div>
+  <div class="small">
+    进入后本屏会一直显示工单，屏幕不会自动熄灭、鼠标光标会隐藏<br>
+    <b>这一下同时会开启提示音</b>（新订单 / 加急 / 疑问会出声提醒）<br>
+    每 <b id="tvRefreshMin">240</b> 分钟自动整页刷新一次（防止长时间显示变卡）· 断网自动提示并重连
+  </div>
+</div>
+<div class="hint-bar">本屏仅展示工单进度（电视无操作） · 请用<b>微信扫描右侧二维码</b>进入手机端：开始制作 / 完成反馈 / 提出疑问（可拍图、可录音）/ 拍完工照</div>
+
+<div class="cols">
+  <div class="col col-active">
+    <div class="col-head">
+      <span>进行中</span>
+      <span class="cnt" id="cntActive">0</span>
+      <span class="sub" id="subActive"></span>
+      <span class="page-ind" id="ind-active"></span>
+    </div>
+    <div class="col-body" id="colActive"></div>
+  </div>
+  <div class="col col-done">
+    <div class="col-head">
+      <span>已完成</span>
+      <span class="cnt" id="cntDone">0</span>
+      <span class="page-ind" id="ind-done"></span>
+    </div>
+    <div class="col-body" id="colDone"></div>
+  </div>
+
+  <aside class="scan-panel">
+    <div class="sp-title">手机扫码操作</div>
+    <div class="sp-qr">
+      <div id="panelQr"></div>
+      <div class="sp-qr-cap">微信扫码进入看板系统</div>
+    </div>
+    <div class="sp-steps">
+      <div><i>1</i>微信扫描上方二维码进入</div>
+      <div><i>2</i>开始制作 / 完成反馈</div>
+      <div><i>3</i>有疑问随时提，可拍照、可录音</div>
+    </div>
+    <div class="sp-note">扫码打开「工单看板系统」首页：<br>手机点「手机反馈页」开始操作，<br>电脑点「业务员工作台」录入订单。</div>
+  </aside>
+</div>
+
+<div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+<script src="lib/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script src="app.js?v=202609304"></script>
+<script>
+  /* 大屏只做展示：所有操作（开始/完成/提问/确认）都在手机扫码后完成 */
+  function setCardBtns(o) {
+    return o.status === 'done' ? '<div class="done-mark">已完成，业务员已收到反馈</div>' : '';
+  }
+
+  /* 工人上传的疑问附件：图片在大屏直接看，语音给个标记（电视没声音，手机端听） */
+  function qAttChip(q) {
+    const imgs = q.images || [];
+    const au = (q.audio && q.audio.u) ? q.audio : null;
+    if (!imgs.length && !au) return '';
+    return '<div class="q-att">' +
+      (imgs.length ? '<div class="c-imgs">' + imgs.map(s =>
+        '<img src="' + s + '" data-full="' + s + '" title="工人现场照片">').join('') + '</div>' : '') +
+      (au ? '<span class="q-audio-tag">语音 ' + fmtDur(au.d) + ' · 手机端可听</span>' : '') +
+      '</div>';
+  }
+
+  /* 只展示剩余未解决的疑问；答复后请在手机上确认 */
+  function questionHtml(o) {
+    return (o.questions || [])
+      .map((q, i) => ({ q: q, i: i }))
+      .filter(x => !x.q.resolved &&
+        (x.q.text || (x.q.images || []).length || (x.q.audio && x.q.audio.u)))
+      .map(x => {
+        const att = qAttChip(x.q);
+        if (x.q.reply) {
+          return '<div class="c-q replied">答复：' + esc(x.q.reply) + att +
+            '<br>（请在手机上点「收到，继续制作」）</div>';
+        }
+        return '<div class="c-q pending">疑问待解答：' +
+          (x.q.text ? esc(x.q.text) : '（没写文字，请看附图 / 语音）') + att + '</div>';
+      }).join('');
+  }
+
+  /* 完工照片（工人在手机上拍的成品图） */
+  function doneImgHtml(o) {
+    if (!(o.doneImages || []).length) return '';
+    return '<div class="c-imgs">' + o.doneImages.map(function (s) {
+      return '<img src="' + s + '" data-full="' + s + '" title="完工照片">';
+    }).join('') + '</div>';
+  }
+
+  /* 业务员上传的附件：图片直接显示缩略图（可点放大），
+     PDF / 文档类给个「手机端可下载」提示（电视不下载） */
+  function filePartsHtml(o) {
+    const fs = o.files || [];
+    if (!fs.length) return '';
+    const imgTags = fs.filter(f => isImageFile(f.n)).map(f =>
+      '<img src="' + f.u + '" data-full="' + f.u + '" title="附件：' + esc(f.n) + '">');
+    const otherCount = fs.length - imgTags.length;
+    return (imgTags.length ? '<div class="c-imgs">' + imgTags.join('') + '</div>' : '') +
+      (otherCount ? '<div class="c-files">📎 ' + otherCount + ' 个文件附件 · 手机端可下载</div>' : '');
+  }
+
+  /* 制作要求：点过的常用词做气泡（远看醒目），手写文字走原来的灰底块。
+     新订单常用词单独存在 chips 字段；老订单没有就从 note 文字里拆出来兜底 */
+  function notePartsOf(o) {
+    if (Array.isArray(o.chips) && o.chips.length) return { chips: o.chips, text: o.note || '' };
+    return (typeof splitNote === 'function') ? splitNote(o.note) : { chips: [], text: o.note || '' };
+  }
+  function noteHtml(o) {
+    var np = notePartsOf(o);
+    var h = '';
+    if (np.chips.length) {
+      h += '<div class="c-chips">' + np.chips.map(function (w) {
+        return '<span class="c-chip">' + esc(w) + '</span>';
+      }).join('') + '</div>';
+    }
+    if (np.text) h += '<div class="c-note">' + esc(np.text) + '</div>';
+    return h;
+  }
+
+  function cardHtml(o) {
+    const d = dueInfo(o.due, o.status);
+    const imgs = (o.images || []).length
+      ? '<div class="c-imgs">' + o.images.map(s =>
+          '<img src="' + s + '" data-full="' + s + '">').join('') + '</div>'
+      : '';
+    const stChip = o.status === 'doing'
+      ? '<span class="c-st doing">制作中</span>'
+      : (o.status === 'todo' ? '<span class="c-st todo">待开始</span>' : '');
+    return '<div class="card ' + o.status + (o.rush ? ' rush' : '') + '" data-id="' + esc(o.id) + '">' +
+      '<div class="c-main">' +
+        '<div class="c-top"><span class="c-id">' + esc(o.id) + '</span>' +
+        (o.rush ? '<span class="c-rush">加急</span>' : '') + stChip +
+        '<span class="c-due ' + (d.urgent ? 'urgent' : '') + '">' + d.text + '</span></div>' +
+        '<div class="c-product">' + esc(o.product) + '</div>' +
+        '<div class="c-meta">' + esc(o.customer) + ' · 数量 ' + esc(o.qty) +
+        ' · <span style="color:#85b7eb">业务员 ' + esc(o.owner || '未分配') + '</span></div>' +
+        noteHtml(o) +
+        filePartsHtml(o) +
+        imgs + doneImgHtml(o) + questionHtml(o) + setCardBtns(o) +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ===== 多订单模式 =====
+     1. 「待处理 + 进行中」合并成一列，按紧急度排序：逾期 > 今天 > 明天 > 其余按交期
+     2. 每列超过一屏自动分页轮播（电视上不用滚动）
+     3. 已完成列只显示最近几条，其余收纳计数 */
+  var PAGE_SIZE = 3;      /* 兜底值：正常情况按实际屏幕高度自动算一页装几张 */
+  var DONE_KEEP = 3;
+  var CARD_GAP = 12;
+  var scopeOwner = new URLSearchParams(location.search).get('owner') || '';
+  var pageIdx = { active: 0, done: 0 };
+  var colPages = { active: 1, done: 1 };
+  var counts = { active: 0, done: 0 };
+
+  /* 还有没解决的疑问（有疑问 = 需要业务员关注，必须排在最显眼的位置） */
+  function hasOpenQ(o) {
+    return (o.questions || []).some(function (q) {
+      return !q.resolved && (q.text || (q.images || []).length || (q.audio && q.audio.u));
+    });
+  }
+
+  function sortActive(list) {
+    return list.slice().sort(function (a, b) {
+      var qa = hasOpenQ(a) ? 0 : 1, qb = hasOpenQ(b) ? 0 : 1;
+      if (qa !== qb) return qa - qb;            /* 有疑问的排最前 */
+      var ra = a.rush ? 0 : 1, rb = b.rush ? 0 : 1;
+      if (ra !== rb) return ra - rb;            /* 加急的紧接着排前面 */
+      var ua = dueInfo(a.due, a.status).urgent ? 0 : 1;
+      var ub = dueInfo(b.due, b.status).urgent ? 0 : 1;
+      if (ua !== ub) return ua - ub;
+      var da = a.due || '9999-99-99', db = b.due || '9999-99-99';
+      if (da !== db) return da < db ? -1 : 1;
+      if (a.status !== b.status) return a.status === 'doing' ? -1 : 1; /* 已开工的排前面 */
+      return 0;
+    });
+  }
+
+  function chunk(arr, n) {
+    var out = [];
+    for (var i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+    return out;
+  }
+
+  /* 按实际可用高度分页：先离屏量一遍每张卡片的真实高度，再按高度装页。
+     电视上不能滚动，所以绝不能把卡片切掉——宁可少装一张、多轮播一页。 */
+  function paginate(cards, avail) {
+    if (!cards.length) return [[]];
+    /* 手机端纵向排列、页面可滚动：不分页，全部展示 */
+    if (window.innerWidth <= 860) return [cards];
+    if (!avail || avail < 80) return chunk(cards, PAGE_SIZE);
+    var body = document.getElementById('colActive');
+    var w = Math.max(220, body.clientWidth - 24);   /* 减去 .col-body 左右 padding */
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;' +
+      'display:flex;flex-direction:column;gap:' + CARD_GAP + 'px;width:' + w + 'px;';
+    probe.innerHTML = cards.map(cardHtml).join('');
+    document.body.appendChild(probe);
+    var hs = [].map.call(probe.children, function (el) { return el.offsetHeight; });
+    probe.parentNode.removeChild(probe);
+
+    var pages = [], cur = [], acc = 0;
+    for (var i = 0; i < cards.length; i++) {
+      var need = hs[i] + (cur.length ? CARD_GAP : 0);
+      if (cur.length && acc + need > avail) { pages.push(cur); cur = []; acc = 0; need = hs[i]; }
+      cur.push(cards[i]); acc += need;
+    }
+    if (cur.length) pages.push(cur);
+    return pages;
+  }
+
+  function renderColumn(key, bodyId, pages, extra) {
+    document.getElementById('cnt' + key.charAt(0).toUpperCase() + key.slice(1)).textContent = counts[key];
+    if (!pages || !pages.length) pages = [[]];
+    colPages[key] = pages.length;
+    if (pageIdx[key] >= pages.length) pageIdx[key] = 0;
+    var page = pages[pageIdx[key]];
+    var ind = document.getElementById('ind-' + key);
+    if (pages.length > 1 && page.length) {
+      ind.style.display = '';
+      ind.textContent = (pageIdx[key] + 1) + ' / ' + pages.length + ' 页';
+    } else {
+      ind.style.display = 'none';
+    }
+    document.getElementById(bodyId).innerHTML =
+      (page.map(cardHtml).join('') || '<div class="empty-tip">暂无订单</div>') + (extra || '');
+  }
+
+  var lastSig = null;
+
+  /* 数据指纹：数据没变就不重绘，避免二维码反复重画闪一下。
+     疑问的附件数 / 答复状态也要算进去，否则云同步回来的变化不触发重绘。 */
+  function dataSig(list) {
+    return list.length + '#' + new Date().toDateString() + '#' +
+      list.map(function (o) {
+        var q = (o.questions || []).map(function (x) {
+          return ((x.images || []).length) + (x.audio ? 'a' : '') +
+            (x.reply ? 'r' : '') + (x.resolved ? 'x' : '') + (x.text || '').length;
+        }).join('');
+        return o.id + o.status + (o.updatedAt || 0) + q + (o.rush ? 'R' : '') +
+          ((o.files || []).length) + ((o.chips || []).join('|')) +
+          ((o.doneImages || []).length) + (o.doneAudio ? 'A' : '');
+      }).join(',');
+  }
+
+  function render(force) {
+    var list = loadOrders();
+    if (scopeOwner) list = list.filter(function (o) { return (o.owner || '') === scopeOwner; });
+    var sig = dataSig(list);
+    if (!force && sig === lastSig) return;
+    lastSig = sig;
+
+    var groups = { todo: [], doing: [], done: [] };
+    list.forEach(function (o) { (groups[o.status] || (groups[o.status] = [])).push(o); });
+
+    var activeSorted = sortActive(groups.todo.concat(groups.doing));
+    groups.done.sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+    var doneVisible = groups.done.slice(0, DONE_KEEP);
+    var archived = groups.done.length - doneVisible.length;
+
+    counts = { active: activeSorted.length, done: groups.done.length };
+
+    var avail = document.getElementById('colActive').clientHeight - 24;
+    var doneExtra = archived > 0
+      ? '<div class="archived-note">已收纳更早的 ' + archived + ' 条已完成订单</div>' : '';
+
+    renderColumn('active', 'colActive', paginate(activeSorted, avail));
+    renderColumn('done', 'colDone', paginate(doneVisible, avail - (doneExtra ? 34 : 0)), doneExtra);
+
+    document.getElementById('subActive').textContent =
+      counts.active ? '待开始 ' + groups.todo.length + ' · 制作中 ' + groups.doing.length : '';
+  }
+
+  /* 分页轮播：8 秒翻一页 */
+  setInterval(function () {
+    var multi = false;
+    ['active', 'done'].forEach(function (k) {
+      if (colPages[k] > 1) { pageIdx[k] = (pageIdx[k] + 1) % colPages[k]; multi = true; }
+    });
+    if (multi) render(true);
+  }, 8000);
+
+  /* 大屏只做展示，唯一的点击行为是放大图片（方便有人接鼠标时看细节） */
+  document.addEventListener('click', function (e) {
+    const img = e.target.closest('.c-imgs img');
+    if (img) {
+      document.getElementById('lightboxImg').src = img.dataset.full;
+      document.getElementById('lightbox').classList.add('open');
+    }
+  });
+  document.getElementById('lightbox').onclick = function () { this.classList.remove('open'); };
+
+  /* ===== 右侧：手机端入口二维码（地址自动指向线上，无需配置） =====
+     扫码打开「工单看板系统」首页，手机/电脑都能从首页进各功能页 */
+  function paintPanelQr() {
+    var box = document.getElementById('panelQr');
+    box.innerHTML = '';
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(box, {
+        text: getScanBase(), width: 320, height: 320,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } else {
+      box.innerHTML = '<div class="qr-fail">二维码库未加载</div>';
+    }
+  }
+
+  /* ===== 提示音：新订单 / 加急 / 疑问 三种，代码合成不依赖音频文件 =====
+     浏览器策略：页面没被点过之前不允许出声 → 首次点击/按键时解锁，
+     顶部徽章会显示当前状态，点徽章可切换静音（地址加 ?mute=1 也可默认静音） */
+  const SND_KEY = 'gk_tv_sound';
+  const SND_MUTE_KEY = 'gk_tv_sound_mute';
+  let audioCtx = null, sndWant = true, sndReady = false;
+  let seenMap = null;   /* { ready:true, o: {订单号: 1=已见 / 2=已见且加急已响}, q: ['单号#时间戳'] } */
+
+  function loadSeen() {
+    try {
+      const v = JSON.parse(localStorage.getItem(SND_KEY) || 'null');
+      if (v && v.o && Array.isArray(v.q)) return v;
+    } catch (e) {}
+    return { o: {}, q: [] };
+  }
+  function saveSeen() {
+    try { localStorage.setItem(SND_KEY, JSON.stringify(seenMap)); } catch (e) {}
+  }
+  function saveWant() {
+    try { localStorage.setItem(SND_MUTE_KEY, sndWant ? '1' : '0'); } catch (e) {}
+  }
+
+  function ensureCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { audioCtx = new AC(); } catch (e) { return null; }
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(function () {});
+    return audioCtx;
+  }
+
+  /* 一串音符顺序播放：{f 频率, at 起始毫秒, d 时长毫秒, type 音色, v 音量} */
+  function playScore(notes) {
+    if (!sndWant || !sndReady) return;
+    const ctx = ensureCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const t0 = ctx.currentTime;
+    notes.forEach(function (n) {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = n.type || 'sine';
+      osc.frequency.value = n.f;
+      const s = t0 + (n.at || 0) / 1000;
+      const e = s + (n.d || 160) / 1000;
+      g.gain.setValueAtTime(0, s);
+      g.gain.linearRampToValueAtTime(n.v || 0.34, s + 0.012);
+      g.gain.setValueAtTime(n.v || 0.34, e - 0.03);
+      g.gain.linearRampToValueAtTime(0, e);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(s); osc.stop(e + 0.02);
+    });
+  }
+
+  const SND = {
+    /* 新订单：叮——咚（清亮两声，不刺耳） */
+    newOrder: [{ f: 880, at: 0, d: 150 }, { f: 1175, at: 170, d: 230 }],
+    /* 加急：急促双响（同一音高连敲两下，有点像提醒铃） */
+    rush: [
+      { f: 1245, at: 0, d: 110, type: 'triangle', v: 0.4 },
+      { f: 1245, at: 170, d: 110, type: 'triangle', v: 0.4 },
+      { f: 1245, at: 340, d: 190, type: 'triangle', v: 0.4 }
+    ],
+    /* 疑问：三连提醒（中音三下，最容易分辨） */
+    question: [
+      { f: 660, at: 0, d: 130, type: 'square', v: 0.2 },
+      { f: 660, at: 190, d: 130, type: 'square', v: 0.2 },
+      { f: 990, at: 380, d: 260, type: 'square', v: 0.2 }
+    ]
+  };
+
+  function paintSndBadge() {
+    const b = document.getElementById('sndBadge');
+    if (!b) return;
+    if (!sndWant) { b.textContent = '🔇 提示音已静音'; b.className = 'mute'; return; }
+    if (sndReady) { b.textContent = '🔊 提示音已开启'; b.className = ''; return; }
+    b.textContent = '🔔 点一下开启提示音'; b.className = 'off';
+  }
+
+  function unlockSound(showTip) {
+    const ctx = ensureCtx();
+    if (!ctx) return;
+    ctx.resume().then(function () {
+      if (ctx.state === 'running') {
+        sndReady = true;
+        paintSndBadge();
+        if (showTip) playScore(SND.newOrder);   /* 解锁时响一声，确认喇叭能用 */
+      }
+    }).catch(function () {});
+  }
+
+  /* ?mute=1 → 默认静音（夜里挂机用）；徽章点击可随时切换，选择会记住 */
+  (function initSound() {
+    const qs = new URLSearchParams(location.search);
+    let saved = null;
+    try { saved = localStorage.getItem(SND_MUTE_KEY); } catch (e) {}
+    if (qs.get('mute') === '1') sndWant = false;
+    else if (saved === '0') sndWant = false;
+    seenMap = loadSeen();
+    document.addEventListener('click', function () { unlockSound(false); });
+    document.addEventListener('keydown', function () { unlockSound(false); });
+    document.addEventListener('touchstart', function () { unlockSound(false); });
+    document.getElementById('sndBadge').addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (!sndWant) {          /* 静音 → 开启 */
+        sndWant = true; saveWant(); paintSndBadge(); unlockSound(true);
+      } else if (!sndReady) {  /* 还没解锁 → 先解锁 */
+        unlockSound(true);
+      } else {                 /* 已开启 → 静音 */
+        sndWant = false; saveWant(); paintSndBadge();
+      }
+    });
+    paintSndBadge();
+  })();
+
+  /* 比对云端数据，只对「新出现的事件」出声：
+     新订单→叮咚 / 新加急（含老单被改成加急）→急促双响 / 新疑问未答复→三连提醒。
+     页面第一次拿到数据时全部记为已见，不补响历史订单 */
+  function checkSounds(list) {
+    if (!seenMap) return;
+    if (!seenMap.ready) {                       /* 首次：只登记，不出声 */
+      seenMap = { ready: true, o: {}, q: [] };
+      list.forEach(function (o) {
+        seenMap.o[o.id] = o.rush ? 2 : 1;
+        (o.questions || []).forEach(function (q) {
+          if (!q.reply) seenMap.q.push(o.id + '#' + q.at);
+        });
+      });
+      saveSeen();
+      return;
+    }
+    let played = false;
+    list.forEach(function (o) {
+      const seen = seenMap.o[o.id];
+      if (!seen) {
+        seenMap.o[o.id] = o.rush ? 2 : 1;
+        playScore(o.rush ? SND.rush : SND.newOrder);
+        played = true;
+      } else if (o.rush && seen === 1) {
+        seenMap.o[o.id] = 2;                    /* 老单被改成加急 */
+        playScore(SND.rush);
+        played = true;
+      }
+      (o.questions || []).forEach(function (q) {
+        if (q.reply) return;                    /* 已答复的不提醒 */
+        const k = o.id + '#' + q.at;
+        if (seenMap.q.indexOf(k) < 0) {
+          seenMap.q.push(k);
+          playScore(SND.question);
+          played = true;
+        }
+      });
+      if (seenMap.q.length > 500) seenMap.q = seenMap.q.slice(-400);
+    });
+    if (played) saveSeen();
+  }
+
+  /* 时钟 */
+  function tick() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    document.getElementById('clock').textContent = p(d.getHours()) + ':' + p(d.getMinutes());
+    document.getElementById('dateStr').textContent =
+      d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 · 星期' +
+      '日一二三四五六'[d.getDay()];
+  }
+  tick(); setInterval(tick, 10000);
+
+  function initScope() {
+    var tag = document.getElementById('scopeTag');
+    if (scopeOwner) {
+      tag.textContent = '本屏：' + scopeOwner + ' 的工单';
+      tag.style.cssText = 'font-size:15px;background:rgba(55,138,221,.18);color:#85b7eb;padding:5px 14px;border-radius:16px;';
+    } else {
+      tag.textContent = '全部业务员';
+      tag.style.cssText = 'font-size:14px;background:rgba(255,255,255,.08);color:#8a93a6;padding:5px 14px;border-radius:16px;';
+    }
+  }
+
+  initScope();
+  paintPanelQr();
+
+  /* 常用词表（制作要求气泡用）：启动先拉一次，之后每 10 分钟同步一次，
+     免得业务员改了常用词、大屏还按老词表画气泡 */
+  loadNoteChips().then(function () { render(true); });
+  setInterval(function () {
+    loadNoteChips().then(function () { render(true); });
+  }, 10 * 60 * 1000);
+
+  window.addEventListener('resize', function () { render(true); });
+
+  /* 等云端数据到齐后首渲染；之后云端有变化会自动重绘（顺带比对要不要出声）。
+     另有 5 秒兜底重绘，处理分页轮播一类的状态 */
+  function onData() {
+    render(true);
+    let list = loadOrders();
+    if (scopeOwner) list = list.filter(function (o) { return (o.owner || '') === scopeOwner; });
+    checkSounds(list);
+  }
+  startApp(onData);
+  setInterval(render, 5000);
+
+  /* ===== 电视模式（地址后加 ?tv=1 启用）=====
+     目标：接上电视后什么都不用管，一直显示、不黑屏、不卡死、掉线会提示 */
+  (function () {
+    var qs = new URLSearchParams(location.search);
+    if (qs.get('tv') !== '1') return;
+    document.body.classList.add('tv-mode');
+
+    /* 1. 全屏：浏览器要求先有一次用户操作，所以给个提示层，点一下 / 按 OK 即进入 */
+    var tip = document.getElementById('tvTip');
+    function goFull() {
+      var el = document.documentElement;
+      var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+      if (req) { try { req.call(el); } catch (e) {} }
+      tip.classList.remove('show');
+    }
+    tip.addEventListener('click', goFull);
+    document.addEventListener('keydown', function (e) {
+      if (!document.fullscreenElement) goFull();
+    });
+    if (!document.fullscreenElement) tip.classList.add('show');
+    document.addEventListener('fullscreenchange', function () {
+      if (!document.fullscreenElement) tip.classList.add('show');   /* 退出全屏就再提示一次 */
+    });
+
+    /* 2. 屏幕常亮：不让电视/显示器自己熄灭（浏览器不支持就跳过，不影响显示） */
+    function keepAwake() {
+      if (!navigator.wakeLock) return;
+      try {
+        navigator.wakeLock.request('screen').then(function (l) {
+          l.addEventListener('release', function () { setTimeout(keepAwake, 1500); });
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    keepAwake();
+    document.addEventListener('visibilitychange', function () {
+      /* 切回前台时：重新防息屏 + 立刻重绘一次（可能已经过去很久） */
+      if (document.visibilityState === 'visible') { keepAwake(); render(true); }
+    });
+
+    /* 3. 定时整页自刷新：长时间连续跑不卡死、不漏更新。默认 240 分钟，可用 ?refresh=60 改 */
+    var min = Math.max(10, parseInt(qs.get('refresh'), 10) || 240);
+    document.getElementById('tvRefreshMin').textContent = min;
+    setTimeout(function () { location.reload(); }, min * 60 * 1000);
+
+    /* 4. 断网：顶部红条提示；网络恢复后自动整页刷新一次，保证画面是最新的 */
+    var bar = document.getElementById('offlineBar');
+    function netCheck() { bar.classList.toggle('show', !navigator.onLine); }
+    window.addEventListener('offline', netCheck);
+    window.addEventListener('online', function () {
+      netCheck();
+      setTimeout(function () { location.reload(); }, 1500);
+    });
+    netCheck();
+  })();
+</script>
+</body>
+</html>

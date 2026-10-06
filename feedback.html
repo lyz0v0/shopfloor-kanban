@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>工人操作页</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f5f7; color: #2c2c2a; font-size: 15px;
+    padding: 16px; max-width: 520px; margin: 0 auto; padding-bottom: 40px;
+  }
+  .o-id { font-size: 13px; color: #888780; font-family: monospace; }
+  .pill { display: inline-block; font-size: 12px; padding: 3px 12px; border-radius: 20px; color: #fff; margin-left: 8px; vertical-align: middle; }
+  .rush-pill {
+    display: inline-block; font-size: 12px; padding: 3px 12px; border-radius: 20px;
+    background: #d92626; color: #fff; margin-left: 8px; vertical-align: middle; font-weight: 500;
+  }
+  .q-pill {
+    display: inline-block; font-size: 12px; padding: 3px 12px; border-radius: 20px;
+    background: #ef9f27; color: #fff; margin-left: 8px; vertical-align: middle; font-weight: 500;
+  }
+  .rush-banner {
+    background: #fcebeb; color: #a32d2d; border-radius: 10px; padding: 10px 12px;
+    font-size: 13.5px; line-height: 1.7; margin-top: 12px; font-weight: 500;
+  }
+  h1 { font-size: 22px; font-weight: 500; margin: 6px 0 4px; line-height: 1.4; }
+  .meta { color: #888780; font-size: 13px; line-height: 1.8; }
+  .meta b { color: #185fa5; font-weight: 500; }
+  .card {
+    background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 12px;
+    padding: 16px; margin-top: 14px;
+  }
+  .card h2 { font-size: 13px; color: #888780; font-weight: 400; margin-bottom: 8px; }
+  .note { font-size: 15px; line-height: 1.7; white-space: pre-wrap; }
+  /* 制作要求里的常用词：做成气泡，手机上一眼看到工艺 */
+  .note-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .note-chip {
+    font-size: 14px; line-height: 1.4; padding: 5px 14px; border-radius: 20px;
+    background: #e8f2fd; color: #185fa5; border: 1px solid #b8d4ee;
+  }
+  .imgs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .imgs img { width: 31%; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); cursor: zoom-in; }
+  .hint-line { color: #888780; font-size: 13px; line-height: 1.7; }
+
+  /* 顶部导航 */
+  .nav { display: flex; align-items: center; margin-bottom: 8px; }
+  .nav .back {
+    margin-left: auto; font-size: 13px; color: #185fa5; text-decoration: none;
+    border: 1px solid #b8d4ee; border-radius: 20px; padding: 4px 12px; background: #fff;
+  }
+  .nav-home {
+    font-size: 13px; color: #185fa5; text-decoration: none;
+    border: 1px solid #b8d4ee; border-radius: 20px; padding: 4px 12px; background: #fff;
+    display: inline-block;
+  }
+  .local-banner {
+    background: #faeeda; color: #854f0b; border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; line-height: 1.7; margin-top: 12px;
+  }
+  .sync-hint { text-align: center; color: #a3a29c; font-size: 12px; margin-top: 18px; line-height: 1.7; }
+
+  /* 工单选择 */
+  .pick-kw {
+    width: 100%; margin-top: 12px; padding: 12px 14px; font-size: 15px; font-family: inherit;
+    border: 1px solid rgba(0,0,0,.12); border-radius: 10px; background: #fff; color: #2c2c2a;
+  }
+  .pick-item {
+    background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 12px;
+    padding: 13px 15px; margin-top: 10px; cursor: pointer;
+  }
+  .pick-item:active { background: #f0f1f3; }
+  .pi-top { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .pi-due { margin-left: auto; font-size: 12px; color: #888780; }
+  .pi-due.urgent { color: #a32d2d; font-weight: 500; }
+  .pi-product { font-size: 17px; font-weight: 500; margin-bottom: 3px; }
+  .pi-meta { font-size: 13px; color: #888780; }
+  .empty-pick {
+    background: #fff; border: 1px dashed rgba(0,0,0,.18); border-radius: 12px;
+    padding: 22px 18px; text-align: center; color: #6b6a65;
+    font-size: 14px; line-height: 2;
+  }
+  .empty-pick b { color: #185fa5; font-weight: 500; }
+
+  /* 疑问 / 沟通记录 */
+  .q-item { border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6; margin-bottom: 8px; }
+  .q-item.pending { background: #faeeda; color: #633806; }
+  .q-item.replied { background: #eaf3de; color: #27500a; }
+  .q-item.closed { background: #f1efe8; color: #6b6a65; }
+  .q-time { font-size: 11.5px; opacity: .75; margin-bottom: 3px; }
+  .q-closed { font-size: 12px; margin-top: 6px; opacity: .8; }
+  .q-btn {
+    display: inline-block; margin-top: 10px; border: none; border-radius: 8px;
+    background: #639922; color: #fff; padding: 9px 18px; font-size: 14px;
+    font-family: inherit; cursor: pointer;
+  }
+
+  /* 操作按钮 */
+  .act-btn {
+    width: 100%; border: none; border-radius: 12px; padding: 16px 0;
+    font-size: 17px; font-family: inherit; color: #fff; cursor: pointer; margin-top: 10px;
+  }
+  .btn-start { background: #378add; }
+  .btn-done { background: #639922; }
+  .btn-ask { background: #fff; color: #534ab7; border: 1.5px solid #534ab7; }
+  .btn-confirm-done { background: #639922; }
+  .done-mark { text-align: center; color: #3b6d11; font-size: 16px; padding: 10px 0; font-weight: 500; }
+  textarea {
+    width: 100%; min-height: 90px; border: 1px solid rgba(0,0,0,.2); border-radius: 10px;
+    padding: 10px; font-size: 15px; font-family: inherit; resize: vertical; margin-top: 10px;
+  }
+  .ask-row { display: flex; gap: 8px; }
+  .ask-row button { flex: 1; }
+  .btn-cancel { background: #f1efe8; color: #444441; }
+  .btn-submit { background: #534ab7; }
+  .btn-submit:disabled { opacity: .5; }
+
+  /* 完工照片 / 附件上传 */
+  .up-title { font-size: 13px; color: #888780; margin-bottom: 8px; }
+  .up-thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .th { position: relative; }
+  .th img { width: 76px; height: 76px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); }
+  .th i {
+    position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%;
+    background: #a32d2d; color: #fff; font-size: 13px; line-height: 20px; text-align: center;
+    cursor: pointer; font-style: normal;
+  }
+  .up-btn {
+    display: inline-block; padding: 10px 18px; font-size: 14px; border-radius: 8px;
+    background: #fff; color: #185fa5; border: 1.5px dashed #b8d4ee; cursor: pointer;
+  }
+
+  /* ===== 附件工具条：拍照 / 相册 / 语音 ===== */
+  .up-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .up-chip {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    flex: 1; min-width: 84px; padding: 11px 8px; font-size: 14px; font-family: inherit;
+    border-radius: 9px; background: #fff; color: #185fa5;
+    border: 1.5px dashed #b8d4ee; cursor: pointer; line-height: 1.2;
+  }
+  .up-chip:active { background: #f2f8fd; }
+  .up-chip.rec-on {
+    background: #fcebeb; color: #a32d2d; border: 1.5px solid #e79a9a;
+    font-variant-numeric: tabular-nums;
+  }
+  .rec-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #e24b4a;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+  .attach-box { margin-top: 10px; }
+  .attach-box:empty { display: none; }
+  .attach-label { font-size: 12px; color: #888780; margin-bottom: 6px; }
+
+  /* ===== 语音条 ===== */
+  .voice {
+    display: flex; align-items: center; gap: 10px; background: #f4f5f7;
+    border: 1px solid rgba(0,0,0,.07); border-radius: 22px;
+    padding: 7px 14px 7px 8px; margin-top: 8px; max-width: 260px;
+  }
+  .v-play {
+    width: 30px; height: 30px; border-radius: 50%; border: none; flex-shrink: 0;
+    background: #378add; cursor: pointer; position: relative; padding: 0;
+  }
+  .v-play::after {
+    content: ''; position: absolute; top: 50%; left: 53%;
+    transform: translate(-50%, -50%);
+    border-left: 10px solid #fff; border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+  }
+  .v-play.on::after {
+    border: none; left: 50%; width: 10px; height: 11px;
+    background: linear-gradient(to right, #fff 0 3px, transparent 3px 7px, #fff 7px 10px);
+  }
+  .v-bar { flex: 1; height: 4px; border-radius: 2px; background: #d9dde3; overflow: hidden; min-width: 40px; }
+  .v-bar span { display: block; height: 100%; width: 0; background: #378add; }
+  .v-dur { font-size: 12.5px; color: #5f5e5a; font-variant-numeric: tabular-nums; }
+  .v-del {
+    border: none; background: none; color: #a32d2d; font-size: 12.5px;
+    cursor: pointer; font-family: inherit; padding: 0 0 0 2px; flex-shrink: 0;
+  }
+  .q-attach { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .q-attach img {
+    width: 62px; height: 62px; object-fit: cover; border-radius: 7px;
+    border: 1px solid rgba(0,0,0,.1); cursor: zoom-in;
+  }
+  .q-attach .voice { margin-top: 0; background: rgba(255,255,255,.6); }
+  /* 附件下载 */
+  .file-row {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid rgba(0,0,0,.09); border-radius: 10px;
+    padding: 11px 12px; margin-bottom: 8px; background: #fafaf8;
+  }
+  .file-row .f-ic { font-size: 20px; flex-shrink: 0; }
+  .file-row .f-info { flex: 1; min-width: 0; }
+  .file-row .f-name {
+    font-size: 14px; color: #2c2c2a; line-height: 1.4;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .file-row .f-size { font-size: 12px; color: #888780; margin-top: 1px; }
+  .file-row .f-dl {
+    border: none; background: #eaf3fb; color: #185fa5; cursor: pointer;
+    border-radius: 8px; padding: 9px 16px; font-size: 14px; font-family: inherit; flex-shrink: 0;
+  }
+  .file-row .f-dl:active { background: #d5e7f7; }
+  .hint-tiny { font-size: 12px; color: #a3a29c; line-height: 1.7; margin-top: 10px; }
+
+  #toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #2c2c2a; color: #fff; padding: 10px 20px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 99;
+  }
+  #toast.show { opacity: 1; }
+  #lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 50;
+    display: none; align-items: center; justify-content: center; cursor: zoom-out;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 94%; max-height: 94%; border-radius: 8px; }
+  .error { text-align: center; padding: 50px 20px; color: #888780; line-height: 1.9; }
+  .error button {
+    margin-top: 18px; padding: 12px 26px; font-size: 15px; font-family: inherit;
+    border: none; border-radius: 10px; background: #185fa5; color: #fff; cursor: pointer;
+  }
+  /* 确认弹窗 */
+  #cfMask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 60;
+    display: none; align-items: center; justify-content: center; padding: 24px;
+  }
+  #cfMask.open { display: flex; }
+  .cf-modal {
+    background: #fff; border-radius: 14px; padding: 24px;
+    width: 100%; max-width: 380px; text-align: center;
+  }
+  .cf-modal h3 { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+  .cf-modal p { color: #888780; font-size: 14px; line-height: 1.7; margin-bottom: 20px; }
+  .cf-modal .row { display: flex; gap: 10px; }
+  .cf-modal .row button {
+    flex: 1; padding: 13px 0; font-size: 16px; font-family: inherit;
+    border: none; border-radius: 10px; cursor: pointer;
+  }
+  .cf-no { background: #f1efe8; color: #444441; }
+  .cf-yes { background: #639922; color: #fff; }
+  .cf-yes.warn { background: #378add; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+
+<div id="cfMask">
+  <div class="cf-modal">
+    <h3 id="cfTitle">确认操作</h3>
+    <p id="cfText"></p>
+    <div class="row">
+      <button class="cf-no" id="cfNo">取消</button>
+      <button class="cf-yes" id="cfYes">确认</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script src="app.js?v=202609304"></script>
+<script>
+  var params = new URLSearchParams(location.search);
+  var orderId = params.get('id') || '';
+  var snapshot = decodeSnapshot(params.get('d'));   /* 二维码里带的订单快照 */
+  var app = document.getElementById('app');
+  var showAsk = false;
+  var justOpenedAsk = false;   /* 只有刚打开提问框才自动聚焦（录音结束重绘时不再弹键盘） */
+  var pickKw = '';
+
+  /* ===== 附件状态（提问中的图片 / 语音） ===== */
+  var askText = '';        /* 提问文字：存一份，重绘不丢 */
+  var askImages = [];      /* 待提交的疑问图片（已压缩） */
+  var askAudio = null;     /* 待提交的疑问语音 { u: dataURL, d: 秒 } */
+  var voiceSrc = {};       /* key -> 音频 dataURL，播放按钮按 key 查表 */
+  var recState = null;     /* 录音中：{ mr, t0, stream, target, cancelled } */
+  var recSec = 0, recTimer = null;
+  var curAudio = null, curAudioBtn = null, curAudioBar = null;
+  var painted = false;     /* 是否已完成首屏渲染 */
+
+  var UP_OPT = { max: 800, quality: 0.68 };   /* 反馈附图压得比材料图更小，省本地空间 */
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+
+  function pill(status) {
+    var s = STATUS[status] || STATUS.todo;
+    return '<span class="pill" style="background:' + s.color + '">' + s.label + '</span>';
+  }
+
+  /* 未解决的疑问条数（有文字 / 图片 / 语音 且未标记已解决） */
+  function openQCount(o) {
+    return (o.questions || []).filter(function (q) {
+      return !q.resolved && (q.text || (q.images || []).length || (q.audio && q.audio.u));
+    }).length;
+  }
+
+  /* ================= 语音：录音 / 播放 ================= */
+  /* 语音条：key 用来在 voiceSrc 表里找音频，withDel 时显示删除 */
+  function voiceHtml(key, dur, withDel) {
+    return '<div class="voice">' +
+      '<button class="v-play" data-act="vplay" data-vkey="' + esc(key) + '"></button>' +
+      '<span class="v-bar"><span></span></span>' +
+      '<span class="v-dur">' + fmtDur(dur) + '</span>' +
+      (withDel ? '<button class="v-del" data-act="vdel" data-vkey="' + esc(key) + '">删除</button>' : '') +
+      '</div>';
+  }
+
+  /* 每次重绘前把当前订单里所有语音登记到表里（dataURL 不挂 DOM 属性，避免卡顿） */
+  function indexVoices(o) {
+    voiceSrc = {};
+    (o.questions || []).forEach(function (q, i) {
+      if (q.audio && q.audio.u) voiceSrc['q' + i] = q.audio.u;
+    });
+    if (o.doneAudio && o.doneAudio.u) voiceSrc['done'] = o.doneAudio.u;
+    if (askAudio) voiceSrc['ask'] = askAudio.u;
+  }
+
+  function stopAudio() {
+    if (curAudio) { try { curAudio.pause(); } catch (e) {} curAudio = null; }
+    if (curAudioBtn) { curAudioBtn.classList.remove('on'); curAudioBtn = null; }
+    if (curAudioBar) { curAudioBar.style.width = '0'; curAudioBar = null; }
+  }
+
+  function toggleVoice(btn) {
+    var src = voiceSrc[btn.dataset.vkey];
+    if (!src) { toast('语音读取失败，下拉刷新页面试试'); return; }
+    var same = (curAudioBtn === btn);
+    stopAudio();
+    if (same) return;
+    var aud = new Audio(src);
+    aud.onended = stopAudio;
+    aud.ontimeupdate = function () {
+      var d = aud.duration;
+      if (curAudioBar && d && isFinite(d)) {
+        curAudioBar.style.width = Math.min(100, (aud.currentTime / d) * 100) + '%';
+      }
+    };
+    curAudio = aud; curAudioBtn = btn;
+    curAudioBar = btn.parentNode.querySelector('.v-bar span');
+    btn.classList.add('on');
+    var p = aud.play();
+    if (p && p.catch) p.catch(function () { stopAudio(); toast('播放失败，请检查手机音量'); });
+  }
+
+  /* 录音按钮的文字/样式（录音中不整页重绘，只改按钮） */
+  function paintRecBtn() {
+    var btns = document.querySelectorAll('[data-act="toggleRec"]');
+    [].forEach.call(btns, function (b) {
+      var on = !!(recState && recState.target === b.dataset.target);
+      b.className = 'up-chip' + (on ? ' rec-on' : '');
+      b.innerHTML = on
+        ? '<span class="rec-dot"></span>' + fmtDur(recSec) + ' 点击结束'
+        : '语音留言';
+    });
+  }
+
+  function startRecord(target) {
+    if (recState) return;
+    if (!recorderSupported()) {
+      toast('这台设备的浏览器不支持录音，请用最新版微信或手机浏览器打开');
+      return;
+    }
+    if (location.protocol === 'file:') {
+      toast('本地文件打开无法录音，请用线上地址');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var mime = pickAudioMime();
+      var opt = { audioBitsPerSecond: 24000 };   /* 语音码率给低一点，60 秒约 180KB */
+      if (mime) opt.mimeType = mime;
+      var mr;
+      try { mr = new MediaRecorder(stream, opt); }
+      catch (e) { mr = new MediaRecorder(stream); }
+      var chunks = [];
+      mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      mr.onerror = function () {
+        clearInterval(recTimer); recTimer = null;
+        recState = null; paintRecBtn(); toast('录音出错，请重试');
+      };
+      mr.onstop = function () {
+        try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+        clearInterval(recTimer); recTimer = null;
+        var h = recState; recState = null; recSec = 0;
+        if (!h || h.cancelled) { paintRecBtn(); return; }
+        var blob = new Blob(chunks, { type: mr.mimeType || mime || 'audio/webm' });
+        if (blob.size < 1500) { paintRecBtn(); toast('没录到声音，靠近麦克风再试一次'); return; }
+        blobToDataURL(blob, function (dataUrl) {
+          var dur = Math.max(1, Math.round((Date.now() - h.t0) / 1000));
+          if (target === 'done') {
+            var ok = updateOrders(function (list) {
+              var o = list.find(function (x) { return x.id === orderId; });
+              if (o) { o.doneAudio = { u: dataUrl, d: dur }; o.updatedAt = Date.now(); }
+            });
+            draw();
+            toast(ok ? '语音已附在完工反馈里' : '手机本地存储已满，这条语音没存下');
+          } else {
+            askAudio = { u: dataUrl, d: dur };
+            draw();
+            toast('已录 ' + fmtDur(dur) + '，点「提交疑问」发送');
+          }
+        });
+      };
+      mr.start();
+      recState = { mr: mr, t0: Date.now(), stream: stream, target: target, cancelled: false };
+      recSec = 0;
+      paintRecBtn();
+      recTimer = setInterval(function () {
+        if (!recState) { clearInterval(recTimer); recTimer = null; return; }
+        recSec = Math.round((Date.now() - recState.t0) / 1000);
+        if (recSec >= REC_MAX_SEC) { toast('最长 ' + REC_MAX_SEC + ' 秒，已自动结束'); stopRecord(); return; }
+        paintRecBtn();
+      }, 300);
+    }).catch(function (err) {
+      var n = String((err && err.name) || '');
+      if (n === 'NotAllowedError' || n === 'SecurityError') {
+        toast('麦克风被拒绝了，请在浏览器/微信设置里允许录音权限');
+      } else if (n === 'NotFoundError') {
+        toast('没找到麦克风设备');
+      } else {
+        toast('录音启动失败' + (err && err.message ? '：' + err.message : ''));
+      }
+    });
+  }
+
+  function stopRecord(cancel) {
+    if (!recState) return;
+    clearInterval(recTimer); recTimer = null;
+    recState.cancelled = !!cancel;
+    try { recState.mr.stop(); } catch (e) { recState = null; paintRecBtn(); }
+  }
+
+  function getOrder() {
+    return loadOrders().find(function (o) { return o.id === orderId; });
+  }
+
+  /* 本机若没有这条工单：用二维码里的快照补一条，先让手机上看到内容、能操作。
+     这条数据在本机（未同步），业务员端要看到必须走云端，界面上会明确提示。 */
+  function ensureOrder() {
+    var o = getOrder();
+    if (o) return o;
+    if (!snapshot) return null;
+    var list = loadOrders();
+    var neo = {
+      id: snapshot.id || orderId,
+      customer: snapshot.customer || '', product: snapshot.product || '',
+      owner: snapshot.owner || '未分配', qty: snapshot.qty || '',
+      due: snapshot.due || '', status: snapshot.status || 'todo',
+      note: snapshot.note || '', images: [], doneImages: [], questions: [],
+      createdAt: Date.now(), updatedAt: Date.now(), fromScan: true
+    };
+    list.push(neo);
+    saveOrders(list);
+    return neo;
+  }
+
+  /* ================= 工单选择（扫码没带订单号时） ================= */
+  function sortPick(a, b) {
+    var ra = a.status === 'done' ? 1 : 0, rb = b.status === 'done' ? 1 : 0;
+    if (ra !== rb) return ra - rb;
+    if (ra === 1) return (b.updatedAt || 0) - (a.updatedAt || 0);
+    /* 加急的排在前面，工人一眼看到该先做哪个 */
+    var za = a.rush ? 0 : 1, zb = b.rush ? 0 : 1;
+    if (za !== zb) return za - zb;
+    /* 有未解决疑问的排前面，提醒工人先看答复 */
+    var qa = openQCount(a) ? 0 : 1, qb = openQCount(b) ? 0 : 1;
+    if (qa !== qb) return qa - qb;
+    var ua = dueInfo(a.due, a.status).urgent ? 0 : 1;
+    var ub = dueInfo(b.due, b.status).urgent ? 0 : 1;
+    if (ua !== ub) return ua - ub;
+    var da = a.due || '9999-99-99', db = b.due || '9999-99-99';
+    return da < db ? -1 : da > db ? 1 : 0;
+  }
+
+  function paintPickList() {
+    var kw = pickKw.trim().toLowerCase();
+    var all = loadOrders();
+    var list = all.filter(function (o) {
+      if (!kw) return true;
+      return (o.id + o.customer + o.product + (o.owner || '')).toLowerCase().indexOf(kw) >= 0;
+    }).sort(sortPick);
+    var box = document.getElementById('pickList');
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = kw
+        ? '<div class="hint-line" style="padding:24px 0;text-align:center;">没有匹配的工单，换个关键词试试</div>'
+        : '<div class="empty-pick">这台手机上还没有工单数据<br>' +
+          '工单数据暂存各设备本机浏览器，<br>接入云端后所有工单会自动同步到这里。</div>';
+      return;
+    }
+    box.innerHTML = list.map(function (o) {
+      var d = dueInfo(o.due, o.status);
+      var nq = openQCount(o);
+      return '<div class="pick-item" data-pick="' + esc(o.id) + '">' +
+        '<div class="pi-top"><span class="o-id">' + esc(o.id) + '</span>' + pill(o.status) +
+        (o.rush ? '<span class="rush-pill">加急</span>' : '') +
+        (nq ? '<span class="q-pill">有疑问 ' + nq + '</span>' : '') +
+        '<span class="pi-due ' + (d.urgent ? 'urgent' : '') + '">' + d.text + '</span></div>' +
+        '<div class="pi-product">' + esc(o.product) + '</div>' +
+        '<div class="pi-meta">' + esc(o.customer) + ' · 数量 ' + esc(o.qty) +
+        ' · 业务员 ' + esc(o.owner || '未分配') + '</div></div>';
+    }).join('');
+  }
+
+  function renderPicker() {
+    app.innerHTML =
+      '<div class="nav"><a class="nav-home" href="index.html">‹ 首页</a></div>' +
+      '<h1>工人操作页</h1>' +
+      '<div class="meta">选择你要操作的工单，或直接扫工单卡片上的二维码</div>' +
+      '<input class="pick-kw" id="pickKw" autocomplete="off" placeholder="搜索订单号 / 客户 / 产品 / 业务员">' +
+      '<div id="pickList"></div>' +
+      '<div class="sync-hint">本机预览数据 · 页面每 5 秒自动刷新</div>';
+    var input = document.getElementById('pickKw');
+    input.value = pickKw;
+    input.oninput = function () { pickKw = this.value; paintPickList(); };
+    paintPickList();
+  }
+
+  /* ================= 订单详情 ================= */
+  /* 疑问附件：工人拍的图 + 语音留言 */
+  function qAttachHtml(q, idx) {
+    var imgs = q.images || [];
+    var hasA = q.audio && q.audio.u;
+    if (!imgs.length && !hasA) return '';
+    return '<div class="q-attach">' +
+      imgs.map(function (s) { return '<img src="' + s + '">'; }).join('') +
+      (hasA ? voiceHtml('q' + idx, q.audio.d, false) : '') +
+      '</div>';
+  }
+
+  /* ================= 附件下载（业务员上传的图纸 / 文件） ================= */
+  function filesCard(o) {
+    var fs = o.files || [];
+    if (!fs.length) return '';
+    return '<div class="card"><h2>附件（点「下载」存到手机）</h2>' +
+      fs.map(function (f, i) {
+        return '<div class="file-row">' +
+          '<span class="f-ic">' + fileIcon(f.n) + '</span>' +
+          '<div class="f-info">' +
+            '<div class="f-name">' + esc(f.n) + '</div>' +
+            '<div class="f-size">' + formatSize(f.s) + '</div>' +
+          '</div>' +
+          '<button class="f-dl" data-act="dlfile" data-fi="' + i + '">下载</button>' +
+          '</div>';
+      }).join('') +
+      '<div class="hint-tiny">苹果手机：下载后若直接打开预览，点分享按钮 → 「存储到文件」。<br>' +
+      '微信里若下载不了，点右上角 ··· 选择「在浏览器打开」再下载。</div>' +
+      '</div>';
+  }
+
+  function historyCard(o) {
+    var qs = (o.questions || []).map(function (q, i) { q._i = i; return q; })
+      .filter(function (q) { return q.text || (q.images || []).length || (q.audio && q.audio.u); });
+    if (!qs.length) return '';
+    return '<div class="card"><h2>沟通记录（' + qs.length + ' 条）</h2>' + qs.map(function (q) {
+      var cls = q.resolved ? 'closed' : (q.reply ? 'replied' : 'pending');
+      return '<div class="q-item ' + cls + '">' +
+        '<div class="q-time">' + fmtTime(q.at) + ' · 我提问</div>' + esc(q.text) + qAttachHtml(q, q._i) +
+        (q.reply
+          ? '<div class="q-time" style="margin-top:6px">' + fmtTime(q.replyAt) + ' · 业务员答复</div>' + esc(q.reply)
+          : '<div class="q-time" style="margin-top:6px">等待业务员答复…</div>') +
+        (q.reply && !q.resolved
+          ? '<div><button class="q-btn" data-act="resolve" data-qi="' + q._i + '">收到，继续制作</button></div>' : '') +
+        (q.resolved ? '<div class="q-closed">已确认解决</div>' : '') +
+        '</div>';
+    }).join('') + '</div>';
+  }
+
+  /* 完工反馈：照片（可拍照/相册）+ 语音留言 */
+  function doneMediaCard(o, withUpload) {
+    var ths = (o.doneImages || []).map(function (s, i) {
+      return '<span class="th"><img src="' + s + '">' +
+        (withUpload ? '<i data-act="delDone" data-di="' + i + '">×</i>' : '') + '</span>';
+    }).join('');
+    var hasA = o.doneAudio && o.doneAudio.u;
+    if (!withUpload && !ths && !hasA) return '';
+    var h = '<div class="up">' +
+      '<div class="up-title">完工反馈' + (withUpload ? '（可选：拍张成品图，或录段语音说明）' : '') + '</div>';
+    if (ths) h += '<div class="up-thumbs">' + ths + '</div>';
+    if (hasA) h += voiceHtml('done', o.doneAudio.d, withUpload);
+    if (withUpload) {
+      h += '<div class="up-row">' +
+        '<label class="up-chip" for="doneCam">拍照</label>' +
+        '<label class="up-chip" for="doneGal">相册选图</label>' +
+        '<button class="up-chip" data-act="toggleRec" data-target="done">语音留言</button>' +
+        '</div>' +
+        '<input type="file" id="doneCam" accept="image/*" capture="environment" style="display:none;">' +
+        '<input type="file" id="doneGal" accept="image/*" multiple style="display:none;">';
+    }
+    return h + '</div>';
+  }
+
+  /* 提问区的附件预览（图片 + 语音，都可删） */
+  function paintAskAttach() {
+    var box = document.getElementById('askAttach');
+    if (!box) return;
+    var h = '';
+    if (askImages.length) {
+      h += '<div class="attach-label">已选 ' + askImages.length + ' 张图（最多 3 张）</div>' +
+        '<div class="up-thumbs">' + askImages.map(function (s, i) {
+          return '<span class="th"><img src="' + s + '">' +
+            '<i data-act="delAskImg" data-i="' + i + '">×</i></span>';
+        }).join('') + '</div>';
+    }
+    if (askAudio) {
+      h += '<div class="attach-label">已录语音</div>' + voiceHtml('ask', askAudio.d, true);
+    }
+    box.innerHTML = h;
+  }
+
+  function renderOrder(o) {
+    var d = dueInfo(o.due, o.status);
+    indexVoices(o);
+    var html =
+      '<div class="nav"><a class="nav-home" href="index.html">‹ 首页</a>' +
+      '<span class="o-id">' + esc(o.id) + '</span>' + pill(o.status) +
+      '<a class="back" href="feedback.html">工单列表</a></div>' +
+      '<h1>' + esc(o.product) + '</h1>' +
+      '<div class="meta">' + esc(o.customer) + ' · 数量 ' + esc(o.qty) +
+      '<br>业务员 <b>' + esc(o.owner || '未分配') + '</b> · ' + esc(d.text) + '</div>';
+
+    if (o.fromScan) {
+      html += '<div class="local-banner">此工单内容由大屏二维码带入，可直接操作。<br>' +
+        '制作要求较长时可能不完整，完整要求请看大屏或电脑端。<br>' +
+        '反馈先记录在本机手机上，接入云端后会自动同步给业务员。</div>';
+    }
+
+    if (o.rush && o.status !== 'done') {
+      html += '<div class="rush-banner">⚡ 加急订单 — 请优先制作，完成情况会第一时间通知业务员</div>';
+    }
+
+    /* 常用词单独存在 chips 字段就分开显示；老订单从文字里拆出来兜底 */
+    var noteParts = (Array.isArray(o.chips) && o.chips.length)
+      ? { chips: o.chips, text: o.note || '' }
+      : splitNote(o.note);
+    html += '<div class="card"><h2>制作要求</h2>' +
+      (noteParts.chips.length
+        ? '<div class="note-chips">' + noteParts.chips.map(function (w) {
+            return '<span class="note-chip">' + esc(w) + '</span>';
+          }).join('') + '</div>'
+        : '') +
+      (noteParts.text
+        ? '<div class="note">' + esc(noteParts.text) + '</div>'
+        : (noteParts.chips.length ? '' : '<div class="note">（无特别要求）</div>')) +
+      '</div>';
+
+    if ((o.images || []).length) {
+      html += '<div class="card"><h2>材料图片（点开看大图）</h2><div class="imgs">' +
+        o.images.map(function (s) { return '<img src="' + s + '">'; }).join('') + '</div></div>';
+    } else if (o.fromScan) {
+      html += '<div class="card"><h2>材料图片</h2><div class="hint-line">' +
+        '材料图请在电脑端 / 大屏上查看（图片太大，二维码带不过来）</div></div>';
+    }
+
+    html += filesCard(o);
+
+    html += historyCard(o);
+
+    /* 操作区 */
+    html += '<div class="card"><h2>我要反馈</h2>';
+    if (o.status === 'done') {
+      html += doneMediaCard(o, true) +
+        '<div class="done-mark">该工单已完成' + (o.doneAt ? '（' + fmtTime(o.doneAt) + '）' : '') + '</div>';
+    } else if (showAsk) {
+      html += '<textarea id="askText" autocomplete="off" placeholder="写下你的疑问，例如：尺寸标注看不清 / 颜色不确定 / 材料不够…（只想发图或说话也行）">' +
+        esc(askText) + '</textarea>' +
+        '<div class="up-row" style="margin-top:10px">' +
+        '<label class="up-chip" for="askCam">拍照</label>' +
+        '<label class="up-chip" for="askGal">相册选图</label>' +
+        '<button class="up-chip" data-act="toggleRec" data-target="ask">语音留言</button>' +
+        '</div>' +
+        '<input type="file" id="askCam" accept="image/*" capture="environment" style="display:none;">' +
+        '<input type="file" id="askGal" accept="image/*" multiple style="display:none;">' +
+        '<div class="attach-box" id="askAttach"></div>' +
+        '<div class="ask-row" style="margin-top:12px;">' +
+        '<button class="act-btn btn-cancel" data-act="cancelAsk">取消</button>' +
+        '<button class="act-btn btn-submit" data-act="submitAsk">提交疑问</button></div>' +
+        '<div class="hint-tiny">图最多 3 张 · 语音最长 60 秒 · 都会随疑问一起发给业务员</div>';
+    } else {
+      /* 制作中不放完工反馈上传区，点「完成反馈」变已完成后才出现 */
+      if (o.status === 'todo') {
+        html += '<button class="act-btn btn-start" data-act="start">开始制作</button>';
+      } else {
+        html += '<button class="act-btn btn-done" data-act="done">完成反馈</button>';
+      }
+      html += '<button class="act-btn btn-ask" data-act="openAsk">有疑问，提问</button>';
+    }
+    html += '</div>';
+
+    html += '<div class="sync-hint">页面每 5 秒自动刷新 · 业务员的答复会自动出现</div>';
+
+    app.innerHTML = html;
+    if (showAsk) {
+      var ta = document.getElementById('askText');
+      if (ta) {
+        ta.oninput = function () { askText = this.value; };
+        if (justOpenedAsk) { justOpenedAsk = false; ta.focus(); }
+      }
+      paintAskAttach();
+      paintRecBtn();
+    }
+  }
+
+  function renderMissing() {
+    app.innerHTML = '<div class="nav"><a class="nav-home" href="index.html">‹ 首页</a>' +
+      '<a class="back" href="feedback.html">工单列表</a></div>' +
+      '<div class="error">未找到工单「' + esc(orderId) + '」<br>' +
+      '可能订单号有误，或这条工单还没同步到这台手机<br><br>' +
+      '点下面按钮从工单列表里选一条：' +
+      '<br><button data-act="toPick">查看工单列表</button></div>';
+  }
+
+  function render() {
+    if (!orderId) { renderPicker(); return; }
+    var o = ensureOrder();
+    if (!o) { renderMissing(); return; }
+    renderOrder(o);
+  }
+
+  /* 数据指纹：没变化就不重绘，避免手机上滚动位置被打回顶部。
+     注意不要 stringify 整条 questions——里面可能有几百 KB 的语音 base64。 */
+  function qSig(qs) {
+    return (qs || []).map(function (q) {
+      return [q.at, q.reply || '', q.resolved ? 1 : 0,
+        (q.images || []).length, q.audio ? q.audio.d : 0].join(':');
+    }).join(';');
+  }
+
+  function currentSig() {
+    if (!orderId) {
+      var l = loadOrders();
+      return 'pick:' + l.length + ':' + l.reduce(function (a, o) { return a + (o.updatedAt || 0); }, 0);
+    }
+    var o = getOrder();
+    if (!o) return 'missing';
+    return 'o:' + o.status + '|' + (o.rush ? 'R' : '') + '|' + (o.doneAt || 0) +
+      '|' + (o.doneImages || []).length +
+      '|' + (o.doneAudio ? o.doneAudio.d : 0) +
+      '|' + (o.files || []).map(function (f) { return f.n; }).join(',') +
+      '|' + (o.note || '') + '|' + qSig(o.questions);
+  }
+
+  var lastSig = null;
+
+  function draw() {
+    render();
+    lastSig = currentSig();
+  }
+
+  /* ================= 二次确认（防误触） ================= */
+  var pendingAct = null;
+  function showConfirm(act) {
+    pendingAct = act;
+    var o = getOrder();
+    var yes = document.getElementById('cfYes');
+    if (act === 'done') {
+      document.getElementById('cfTitle').textContent = '确认完成？';
+      document.getElementById('cfText').textContent =
+        (o ? o.product : '该订单') + ' 将标记为已完成，业务员会收到完成反馈。完成后还能补拍成品图 / 录语音。';
+      yes.textContent = '确认完成';
+      yes.classList.remove('warn');
+    } else {
+      document.getElementById('cfTitle').textContent = '确认开始？';
+      document.getElementById('cfText').textContent = '该订单将进入「进行中」。';
+      yes.textContent = '确认开始';
+      yes.classList.add('warn');
+    }
+    document.getElementById('cfMask').classList.add('open');
+  }
+  document.getElementById('cfNo').onclick = function () {
+    pendingAct = null;
+    document.getElementById('cfMask').classList.remove('open');
+  };
+  document.getElementById('cfMask').onclick = function (e) {
+    if (e.target === this) { pendingAct = null; this.classList.remove('open'); }
+  };
+  document.getElementById('cfYes').onclick = function () {
+    if (!pendingAct) return;
+    var act = pendingAct;
+    pendingAct = null;
+    document.getElementById('cfMask').classList.remove('open');
+    updateOrders(function (list) {
+      var o = list.find(function (x) { return x.id === orderId; });
+      if (!o) return;
+      o.status = act === 'start' ? 'doing' : 'done';
+      if (act === 'start') o.startedAt = o.startedAt || Date.now();
+      if (act === 'done') o.doneAt = Date.now();
+      o.updatedAt = Date.now();
+    });
+    draw();
+    toast(act === 'start' ? '已开始制作' : '已完成，业务员已收到反馈');
+    /* 完工时立刻推送（「开始制作」不打扰业务员） */
+    if (act === 'done') notifyOrderEvent('done', orderId);
+  };
+
+  /* ================= 交互 ================= */
+  document.addEventListener('click', function (e) {
+    var pick = e.target.closest('[data-pick]');
+    if (pick) {
+      location.search = '?id=' + encodeURIComponent(pick.dataset.pick);
+      return;
+    }
+    var btn = e.target.closest('[data-act]');
+    if (btn) {
+      var act = btn.dataset.act;
+      if (act === 'toPick') { location.search = ''; return; }
+      if (act === 'openAsk') { showAsk = true; justOpenedAsk = true; draw(); return; }
+      if (act === 'cancelAsk') {
+        stopRecord(true); stopAudio();
+        showAsk = false; askText = ''; askImages = []; askAudio = null;
+        draw(); return;
+      }
+      if (act === 'toggleRec') {
+        var tgt = btn.dataset.target || 'ask';
+        if (recState && recState.target === tgt) stopRecord();
+        else if (recState) toast('请先结束当前录音');
+        else startRecord(tgt);
+        return;
+      }
+      if (act === 'vplay') { toggleVoice(btn); return; }
+      if (act === 'vdel') {
+        var vk = btn.dataset.vkey;
+        stopAudio();
+        if (vk === 'ask') { askAudio = null; draw(); toast('已删除这条语音'); return; }
+        if (vk === 'done') {
+          updateOrders(function (list) {
+            var o = list.find(function (x) { return x.id === orderId; });
+            if (o) { o.doneAudio = null; o.updatedAt = Date.now(); }
+          });
+          draw(); toast('已删除完工语音'); return;
+        }
+        if (/^q\d+$/.test(vk)) {
+          var qix = +vk.slice(1);
+          updateOrders(function (list) {
+            var o = list.find(function (x) { return x.id === orderId; });
+            if (o && o.questions[qix]) { o.questions[qix].audio = null; o.updatedAt = Date.now(); }
+          });
+          draw(); toast('已删除这条语音'); return;
+        }
+        return;
+      }
+      if (act === 'delAskImg') {
+        askImages.splice(+btn.dataset.i, 1);
+        paintAskAttach();
+        return;
+      }
+      if (act === 'submitAsk') {
+        if (recState) { toast('正在录音，先点「点击结束」'); return; }
+        var ta = document.getElementById('askText');
+        var text = ta ? ta.value.trim() : '';
+        if (!text && !askImages.length && !askAudio) {
+          toast('写点文字，或者拍张照 / 录段语音');
+          return;
+        }
+        var saved = updateOrders(function (list) {
+          var o = list.find(function (x) { return x.id === orderId; });
+          if (o) o.questions.push({
+            text: text, at: Date.now(), reply: null, replyAt: null, resolved: false,
+            images: askImages.slice(),
+            audio: askAudio ? { u: askAudio.u, d: askAudio.d } : null
+          });
+        });
+        showAsk = false; askText = ''; askImages = []; askAudio = null;
+        stopAudio(); draw();
+        toast(saved ? '疑问已提交，业务员会尽快答复' : '手机本地存储已满，附件没存下');
+        /* 立刻把这条疑问推给业务员（微信 / 企业微信 / 工作台桌面提醒），
+           不等业务员自己打开后台就能收到 */
+        var justAsked = getOrder();
+        if (justAsked && justAsked.questions.length) {
+          notifyOrderEvent('question', orderId, {
+            question: justAsked.questions[justAsked.questions.length - 1]
+          });
+        }
+        return;
+      }
+      if (act === 'resolve') {
+        var qi = +btn.dataset.qi;
+        updateOrders(function (list) {
+          var o = list.find(function (x) { return x.id === orderId; });
+          if (o && o.questions[qi]) { o.questions[qi].resolved = true; o.updatedAt = Date.now(); }
+        });
+        draw(); toast('已确认，继续制作');
+        return;
+      }
+      if (act === 'delDone') {
+        var di = +btn.dataset.di;
+        updateOrders(function (list) {
+          var o = list.find(function (x) { return x.id === orderId; });
+          if (o && o.doneImages && o.doneImages[di]) { o.doneImages.splice(di, 1); o.updatedAt = Date.now(); }
+        });
+        draw();
+        return;
+      }
+      if (act === 'dlfile') {
+        var o = getOrder();
+        var f = o && (o.files || [])[+btn.dataset.fi];
+        if (f && f.u) {
+          downloadDataFile(f.n, f.u);
+          toast('正在下载「' + f.n + '」');
+        } else {
+          toast('附件读取失败，稍等几秒再试');
+        }
+        return;
+      }
+      if (act === 'start' || act === 'done') { showConfirm(act); return; }
+      return;
+    }
+    var img = e.target.closest('.imgs img, .th img, .q-attach img');
+    if (img) {
+      document.getElementById('lightboxImg').src = img.src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+  });
+
+  /* 拍照 / 相册选图：提问附件存在内存里等提交，完工照片直接写进工单 */
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (!el || el.type !== 'file') return;
+    var id = el.id;
+    var toAsk = (id === 'askCam' || id === 'askGal');
+    var toDone = (id === 'doneCam' || id === 'doneGal');
+    if (!toAsk && !toDone) return;
+    var files = Array.prototype.slice.call(el.files || []);
+    el.value = '';                                  /* 清空，方便重复选同一张 */
+    if (!files.length) return;
+    if (toAsk) {
+      if (askImages.length >= 3) { toast('疑问最多带 3 张图'); return; }
+      files = files.slice(0, 3 - askImages.length);
+    }
+    var left = files.length;
+    files.forEach(function (f) {
+      compressImage(f, function (dataUrl) {
+        if (toAsk) {
+          askImages.push(dataUrl);
+        } else {
+          var ok = updateOrders(function (list) {
+            var o = list.find(function (x) { return x.id === orderId; });
+            if (o) {
+              o.doneImages = o.doneImages || [];
+              o.doneImages.push(dataUrl);
+              o.updatedAt = Date.now();
+            }
+          });
+          if (!ok) toast('手机本地存储已满，这张图没存下');
+        }
+        left--;
+        if (left === 0) {
+          if (toAsk) {
+            paintAskAttach();
+            toast('已加 ' + files.length + ' 张，点「提交疑问」发送');
+          } else {
+            draw(); toast('照片已添加');
+          }
+        }
+      }, UP_OPT);
+    });
+  });
+
+  document.getElementById('lightbox').onclick = function () { this.classList.remove('open'); };
+
+  /* 自动刷新：业务员答复 / 状态变更会自动出现在这台手机上。
+     正在输入时跳过，数据没变也不重绘 */
+  function busyTyping() {
+    var ae = document.activeElement;
+    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) return true;
+    if (recState) return true;   /* 录音中不重绘，否则录音按钮状态会被冲掉 */
+    return document.getElementById('cfMask').classList.contains('open');
+  }
+
+  function repaint() {                 /* 数据变化时重绘，保留滚动位置 */
+    if (painted && busyTyping()) return;   /* 正在输入 / 录音时不打扰 */
+    var y = window.scrollY;
+    render();
+    lastSig = currentSig();
+    painted = true;
+    window.scrollTo(0, y);
+  }
+
+  function autoRefresh() {             /* 同设备多窗口的兜底检查 */
+    if (busyTyping()) return;
+    if (currentSig() === lastSig) return;
+    repaint();
+  }
+
+  /* 等云端数据到齐后首次渲染；之后数据有变化会自动重绘 */
+  /* 提前把推送配置读进内存，工人提交那一刻不用再等网络 */
+  loadNotifySettings();
+  /* 常用词表（制作要求气泡用）：先拉一次，之后每 10 分钟同步 */
+  loadNoteChips().then(repaint);
+  setInterval(function () { loadNoteChips().then(repaint); }, 10 * 60 * 1000);
+  startApp(repaint);
+  setInterval(autoRefresh, 5000);
+</script>
+</body>
+</html>
